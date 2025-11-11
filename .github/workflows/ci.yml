@@ -29,6 +29,7 @@ jobs:
       # Строка подключения для приложения/алембика в CI
       DATABASE_URL: postgresql+psycopg2://astrodaily:astrodaily@localhost:5432/astrodaily
       APP_ENV: test
+      PYTHONPATH: src
 
     steps:
       - name: Checkout
