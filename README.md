@@ -1,5 +1,3 @@
-# a_daily
-# test visual studio code
-# test notepad++
-# final merge! VS code
-final vershion
+# AstroDaily — Starter Repo (Docker + CI)
+
+See Quickstart inside.

@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    image: astrodaily/app:dev
+    container_name: astrodaily_app
+    env_file: .env
+    environment:
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+
+  db:
+    image: postgres:16
+    container_name: astrodaily_db
+    environment:
+      POSTGRES_DB: astrodaily
+      POSTGRES_USER: astrodaily
+      POSTGRES_PASSWORD: astrodaily
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
