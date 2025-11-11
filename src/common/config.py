@@ -1,3 +1,4 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -20,6 +21,9 @@ class Settings(BaseSettings):
     
     @property
     def DATABASE_URL(self) -> str:
+        # В CI будем передавать готовую строку через env
+        if url := os.getenv("DATABASE_URL"):
+            return url
         return (
             f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
