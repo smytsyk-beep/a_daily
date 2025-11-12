@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Optional, Union
+from typing import Optional, Union, Generator
 import json
 
 from sqlalchemy import desc, text
@@ -11,9 +11,31 @@ from app.models import User, ModuleRegistry, EventFeedback  # <-- User, EventFee
 
 DEFAULT_LOCALE = "en"
 
-@contextmanager
-def get_session() -> Session:
+def get_session() -> Generator[Session, None, None]:
+    """
+    FastAPI dependency: yields a live SQLAlchemy Session and closes it after the request.
+    """
     db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@contextmanager
+def session_scope() -> Session:
+    """
+    Для внутреннего кода, где хочется писать: `with session_scope() as db: ...`
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def get_db():
+    """FastAPI dependency: yield real Session, not contextmanager."""
+    db: Session = SessionLocal()
     try:
         yield db
     finally:
