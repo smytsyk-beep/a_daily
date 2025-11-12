@@ -1,5 +1,5 @@
 from typing import List, Dict
-from app.repo import get_session, list_enabled_modules
+from app.repo import get_session, list_enabled_modules, log_event
 from app.modules.daily_digest import compute as daily_digest_compute
 from app.modules.strong_events_alerts import compute as alerts_compute
 
@@ -35,4 +35,10 @@ def run_preview(user_id: str) -> Dict[str, object]:
     atoms = compute_atoms(user_id)
     ranked = rank_atoms(atoms)
     text = render_text(ranked[:10])
-    return {"ok": True, "count": len(ranked), "atoms": ranked, "text": text}
+    payload = {"user_id": user_id, "atoms": len(ranked), "text_len": len(text)}
+    
+    with get_session() as db:
+        ev = log_event(db, event="preview_rendered", user_id=user_id, payload=payload)  # <-- добавили user_id
+        payload["event_id"] = ev.id
+
+    return {"ok": True, "count": len(ranked), "atoms": ranked, "text": text, "event": payload}
