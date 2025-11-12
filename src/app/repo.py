@@ -57,6 +57,33 @@ def list_enabled_modules(db: Session):
     )
 
 
+def recent_events(
+    db: Session,
+    limit: int = 20,
+    user_id: Optional[Union[str, int]] = None,
+    event: Optional[str] = None,
+) -> list[EventFeedback]:
+    q = db.query(EventFeedback).order_by(desc(EventFeedback.created_at))
+
+    # фильтр по событию
+    if event:
+        q = q.filter(EventFeedback.event_ref == event)
+
+    # фильтр по пользователю (числовой id или tg_user_id)
+    if user_id is not None:
+        if isinstance(user_id, int) or (isinstance(user_id, str) and user_id.isdigit()):
+            uid = int(user_id)
+        else:
+            u = db.query(User).filter(User.tg_user_id == str(user_id)).first()
+            if not u:
+                return []  # alias не найден — отдаём пусто
+            uid = u.id
+        q = q.filter(EventFeedback.user_id == uid)
+
+    return q.limit(limit).all()
+
+
+"""
 def recent_events(db: Session, limit: int = 20) -> list[EventFeedback]:
     return (
         db.query(EventFeedback)
@@ -64,7 +91,7 @@ def recent_events(db: Session, limit: int = 20) -> list[EventFeedback]:
         .limit(limit)
         .all()
     )
-
+"""
 
 def _get_or_create_user(db: Session, user_ref: Optional[Union[str, int]]) -> int:
     # system

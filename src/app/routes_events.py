@@ -1,3 +1,34 @@
+from fastapi import APIRouter, Query, Depends
+from typing import Optional, Union
+import json
+from sqlalchemy.orm import Session
+from app.repo import session_scope, recent_events
+
+router = APIRouter(prefix="/events", tags=["events"])
+
+@router.get("/recent")
+def events_recent(
+    limit: int = Query(20, ge=1, le=200),
+    user_id: Optional[Union[str, int]] = Query(None),
+    event: Optional[str] = Query(None),
+):
+    with session_scope() as db:
+        items = recent_events(db, limit=limit, user_id=user_id, event=event)
+
+        return [
+            {
+                "id": ev.id,
+                "event": ev.event_ref,
+                "created_at": ev.created_at.isoformat(),
+                "payload": (json.loads(ev.note) if ev.note else None),
+                "score": ev.score,
+            }
+            for ev in items
+        ]
+
+
+"""
+# version 2
 from fastapi import APIRouter, Query
 from typing import List, Dict, Any
 
@@ -22,9 +53,10 @@ def events_recent(limit: int = Query(20, ge=1, le=200)) -> List[Dict[str, Any]]:
         }
         for e in evs
     ]
-
+"""
 
 """
+# version 1
 from fastapi import APIRouter, Query
 from app.repo import get_session, recent_events
 import json
