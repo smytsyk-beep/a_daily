@@ -80,5 +80,4 @@ jobs:
           PGUSER: astrodaily
           PGPASSWORD: astrodaily
         run:
-          alembic -c alembic.ini upgrade head
-          pytest -q
+          alembic -c alembic.ini upgrade head && pytest -q
