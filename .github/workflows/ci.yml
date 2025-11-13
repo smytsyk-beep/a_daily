@@ -72,3 +72,13 @@ jobs:
           pip install pre-commit
           pre-commit run --all-files || true
           pytest -q
+
+      - name: Run tests
+        env:
+          PGHOST: localhost
+          PGPORT: "5432"
+          PGUSER: astrodaily
+          PGPASSWORD: astrodaily
+        run:
+          alembic -c alembic.ini upgrade head
+          pytest -q
