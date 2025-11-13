@@ -17,7 +17,9 @@ PORT = int(os.getenv("PGPORT", "5432"))
 PG_USER = os.getenv("PGUSER", "astrodaily")
 PG_PASS = os.getenv("PGPASSWORD", "astrodaily")
 
-PG_DSN_ADMIN = f"host={HOST} port={PORT} user={PG_USER} password={PG_PASS} dbname=postgres"
+PG_DSN_ADMIN = (
+    f"host={HOST} port={PORT} user={PG_USER} password={PG_PASS} dbname=postgres"
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ALEMBIC_INI = REPO_ROOT / "alembic.ini"
@@ -43,6 +45,7 @@ def _enable_autocommit(conn):
     except Exception:
         pass
 
+
 def _create_db(name: str) -> None:
     conn = psycopg2.connect(PG_DSN_ADMIN)
     try:
@@ -51,6 +54,7 @@ def _create_db(name: str) -> None:
             cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name)))
     finally:
         conn.close()
+
 
 def _drop_db(name: str) -> None:
     conn = psycopg2.connect(PG_DSN_ADMIN)
@@ -66,9 +70,12 @@ def _drop_db(name: str) -> None:
                 """,
                 (name,),
             )
-            cur.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(name)))
+            cur.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(name))
+            )
     finally:
         conn.close()
+
 
 def _alembic_run(args, db_url: str):
     env = os.environ.copy()

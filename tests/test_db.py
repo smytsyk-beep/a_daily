@@ -3,6 +3,7 @@ from app.main import app
 
 client = TestClient(app)
 
+
 def test_db_health():
     r = client.get("/db/health")
     assert r.status_code == 200

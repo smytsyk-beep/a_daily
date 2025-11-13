@@ -4,6 +4,7 @@ from app.db import engine
 
 router = APIRouter(tags=["db"])
 
+
 @router.get("/db/health")
 def db_health():
     # простой ping к БД

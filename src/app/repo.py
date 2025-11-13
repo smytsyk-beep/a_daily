@@ -11,6 +11,7 @@ from app.models import User, ModuleRegistry, EventFeedback  # <-- User, EventFee
 
 DEFAULT_LOCALE = "en"
 
+
 def get_session() -> Generator[Session, None, None]:
     """
     FastAPI dependency: yields a live SQLAlchemy Session and closes it after the request.
@@ -20,6 +21,7 @@ def get_session() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
 
 @contextmanager
 def session_scope() -> Session:
@@ -43,9 +45,11 @@ def get_db():
 
 
 def _bump_users_seq(db: Session):
-    db.execute(text(
-        "SELECT setval('users_id_seq', (SELECT COALESCE(MAX(id),1) FROM users), true)"
-    ))
+    db.execute(
+        text(
+            "SELECT setval('users_id_seq', (SELECT COALESCE(MAX(id),1) FROM users), true)"
+        )
+    )
 
 
 def list_enabled_modules(db: Session):
@@ -93,6 +97,7 @@ def recent_events(db: Session, limit: int = 20) -> list[EventFeedback]:
     )
 """
 
+
 def _get_or_create_user(db: Session, user_ref: Optional[Union[str, int]]) -> int:
     # system
     if user_ref is None:
@@ -101,7 +106,7 @@ def _get_or_create_user(db: Session, user_ref: Optional[Union[str, int]]) -> int
             u = User(id=1, tg_user_id="system", locale=DEFAULT_LOCALE)
             db.add(u)
             db.flush()
-            _bump_users_seq(db)   # << вот здесь
+            _bump_users_seq(db)  # << вот здесь
         return 1
 
     # числовой id
@@ -112,7 +117,7 @@ def _get_or_create_user(db: Session, user_ref: Optional[Union[str, int]]) -> int
             u = User(id=uid, tg_user_id=str(uid), locale=DEFAULT_LOCALE)
             db.add(u)
             db.flush()
-            _bump_users_seq(db)   # << и здесь
+            _bump_users_seq(db)  # << и здесь
         return uid
 
     # alias -> tg_user_id (без явного id — sequence работает сама)

@@ -3,6 +3,7 @@ from common.config import settings  # ABSOLUTE import
 
 router = APIRouter(tags=["health"])
 
+
 @router.get("/health")
 def health():
     return {

@@ -6,6 +6,7 @@ from app.repo import session_scope, recent_events
 
 router = APIRouter(prefix="/events", tags=["events"])
 
+
 @router.get("/recent")
 def events_recent(
     limit: int = Query(20, ge=1, le=200),

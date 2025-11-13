@@ -32,7 +32,9 @@ def compute_atoms(user_id: str) -> List[Atom]:
     enabled_modules: List[str]
     with session_scope() as db:
         enabled = list_enabled_modules(db)
-        enabled_modules = [m.module for m in enabled]  # m.module — колонка из ModuleRegistry
+        enabled_modules = [
+            m.module for m in enabled
+        ]  # m.module — колонка из ModuleRegistry
 
     atoms: List[Atom] = []
     for name in enabled_modules:
@@ -71,7 +73,12 @@ def run_preview(user_id: str):
         "count": len(atoms),
         "atoms": atoms,
         "text": text,
-        "event": {"user_id": user_id, "atoms": len(atoms), "text_len": len(text), "event_id": ev.id},
+        "event": {
+            "user_id": user_id,
+            "atoms": len(atoms),
+            "text_len": len(text),
+            "event_id": ev.id,
+        },
     }
 
 
@@ -114,7 +121,7 @@ def run_preview(user_id: str) -> Dict[str, object]:
     ranked = rank_atoms(atoms)
     text = render_text(ranked[:10])
     payload = {"user_id": user_id, "atoms": len(ranked), "text_len": len(text)}
-    
+
     with get_session() as db:
         ev = log_event(db, event="preview_rendered", user_id=user_id, payload=payload)  # <-- добавили user_id
         payload["event_id"] = ev.id

@@ -8,9 +8,11 @@ from app.routes_feedback import router as feedback_router
 
 app = FastAPI(title="AstroDaily API")
 
+
 @app.get("/", tags=["root"])
 def root():
     return {"ok": True, "name": "AstroDaily", "version": "0.1.0"}
+
 
 app.include_router(health_router)
 app.include_router(db_router)
