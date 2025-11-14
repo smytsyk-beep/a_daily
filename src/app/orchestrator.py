@@ -33,20 +33,23 @@ def compute_atoms(user_id: str) -> List[Atom]:
 
     with session_scope() as db:
         enabled = list_enabled_modules(db)
-        enabled_modules = [m.module for m in enabled]  # имя из ModuleRegistry
+        enabled_modules = [m.module for m in enabled]
+
+    # 🔧 Фолбэк на случай пустой БД/отсутствия сидов в CI:
+    if not enabled_modules:
+        enabled_modules = list(MODULES.keys())
 
     atoms: List[Atom] = []
     for name in enabled_modules:
         fn = MODULES.get(name)
         if not fn:
-            # модуль есть в таблице, но нет в коде — пропускаем
             continue
         try:
             result = fn(user_id)  # каждая compute возвращает List[Atom]
             if result:
                 atoms.extend(result)
         except Exception:
-            # защищаемся от падения всего пайплайна из-за одного модуля
+            # не даём упасть всему конвейеру
             continue
 
     return rank_atoms(atoms)
