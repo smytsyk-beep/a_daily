@@ -1,7 +1,13 @@
 from datetime import datetime
 from typing import List, Dict
 
-from app.repo import session_scope, list_enabled_modules, log_event
+from app.repo import (
+    session_scope,
+    list_enabled_modules,
+    log_event,
+    ensure_default_modules,
+)
+from app.models import ModuleRegistry
 from app.modules.daily_digest import compute as daily_digest_compute
 from app.modules.strong_events_alerts import compute as alerts_compute
 
@@ -21,11 +27,7 @@ def rank_atoms(atoms: List[Atom]) -> List[Atom]:
 
 
 def render_text(atoms: List[Atom]) -> str:
-    """Рендерим итоговый текст простым склеиванием строк атомов."""
-    lines: List[str] = []
-    for a in atoms:
-        lines.append(str(a.get("text", "")))
-    return "\n".join(lines)
+    return "\n".join(str(a.get("text", "")) for a in atoms)
 
 
 def compute_atoms(user_id: str) -> List[Atom]:
@@ -60,21 +62,35 @@ def compute_atoms(user_id: str) -> List[Atom]:
 
 
 def run_preview(user_id: str) -> dict:
-    """Оркестратор предпросмотра: собрать атомы, текст и залогировать событие."""
-    # 1) собрать атомы
+    """Собираем атомы, гарантируем сид модулей и логируем событие."""
+
+    # 0) Гарантируем сид модулей (первая попытка)
+    with session_scope() as db:
+        ensure_default_modules(db)
+
+    # 1) Собираем атомы и текст
     atoms = compute_atoms(user_id)
     text = render_text(atoms)
 
-    # 2) получить список включённых модулей для ответа/аудита
+    # 2) Читаем включённые модули НОВОЙ сессией.
+    #    Если по какой-то причине пусто — дописываем ORM'ом и перечитываем.
     with session_scope() as db:
-        enabled = list_enabled_modules(db)
-        mod_names = [m.module for m in enabled]
+        rows = list_enabled_modules(db)
+        if not rows:
+            to_upsert: list[ModuleRegistry] = []
+            names = {"daily_digest", "strong_events_alerts"}
+            # чтобы не дублировать, проверим точечно
+            existing = {m.module for m in db.query(ModuleRegistry).all()}
+            for name in sorted(names - existing):
+                to_upsert.append(ModuleRegistry(module=name, enabled=True, config={}))
+            if to_upsert:
+                db.add_all(to_upsert)
+                db.commit()
+            rows = list_enabled_modules(db)
 
-    # --- фолбэк для пустой БД/отсутствия сидов в CI ---
-    if not mod_names:
-        mod_names = list(MODULES.keys())
+        mod_names = [m.module for m in rows]  # ← именно из БД
 
-    # 3) зафиксировать событие
+    # 3) Логируем событие
     payload = {
         "user_id": user_id,
         "atoms": len(atoms),
@@ -89,17 +105,16 @@ def run_preview(user_id: str) -> dict:
             payload=payload,
         )
 
-    # 4) ответ по контракту (верхнеуровневые text и event_id — для тестов)
+    # 4) Контракт ответа
     ts = datetime.utcnow().isoformat() + "Z"
     return {
         "ok": True,
         "ts": ts,
         "user_id": user_id,
-        "modules": mod_names,
-        "event_id": ev.id,  # 👈 важно для тестов и клиентов
-        "atoms": atoms,  # список атомов
-        "text": text,  # 👈 важно для тестов
-        # дополнительные поля для обратной совместимости
+        "modules": mod_names,  # ← гарантированно из БД
+        "event_id": ev.id,
+        "atoms": atoms,
+        "text": text,
         "count": len(atoms),
         "event": {
             "user_id": user_id,

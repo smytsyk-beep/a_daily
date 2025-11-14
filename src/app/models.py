@@ -83,6 +83,7 @@ class Delivery(Base):
 
 class ModuleRegistry(Base):
     __tablename__ = "modules_registry"
+    __table_args__ = {"schema": "public"}
     id = Column(Integer, primary_key=True)
     module = Column(String(64), unique=True, nullable=False)
     enabled = Column(Boolean, default=True)

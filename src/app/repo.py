@@ -154,6 +154,30 @@ def list_recent_events(db: Session, limit: int = 20) -> List[EventFeedback]:
     )
 
 
+def ensure_default_modules(db: Session) -> None:
+    """
+    Идемпотентно гарантирует наличие базовых модулей.
+    Делается через ORM, чтобы изменения всегда были видны новым сессиям.
+    """
+    defaults = [
+        ("daily_digest", True, {}),
+        ("strong_events_alerts", True, {}),
+    ]
+
+    for module_name, enabled, cfg in defaults:
+        exists = (
+            db.query(ModuleRegistry)
+            .filter(ModuleRegistry.module == module_name)
+            .first()
+        )
+        if not exists:
+            db.add(ModuleRegistry(module=module_name, enabled=enabled, config=cfg))
+
+    db.commit()
+    # «протираем» кэш сессии (не обязательно, но полезно в тестах)
+    db.expire_all()
+
+
 __all__ = [
     "get_session",
     "session_scope",
@@ -161,4 +185,5 @@ __all__ = [
     "recent_events",
     "log_event",
     "list_recent_events",
+    "ensure_default_modules",
 ]
