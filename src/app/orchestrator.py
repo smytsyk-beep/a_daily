@@ -70,6 +70,10 @@ def run_preview(user_id: str) -> dict:
         enabled = list_enabled_modules(db)
         mod_names = [m.module for m in enabled]
 
+    # --- фолбэк для пустой БД/отсутствия сидов в CI ---
+    if not mod_names:
+        mod_names = list(MODULES.keys())
+
     # 3) зафиксировать событие
     payload = {
         "user_id": user_id,
