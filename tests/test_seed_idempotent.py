@@ -4,6 +4,7 @@ from app.db import SessionLocal
 from app.models import User
 import os
 
+
 def test_seed_is_idempotent():
     """
     Прогоняем alembic upgrade head дважды и проверяем,
@@ -21,7 +22,7 @@ def test_seed_is_idempotent():
         users = db.query(User).order_by(User.id).all()
 
         system = [u for u in users if u.tg_user_id == "system"]
-        demo   = [u for u in users if u.tg_user_id == "demo"]
+        demo = [u for u in users if u.tg_user_id == "demo"]
 
         # сиды существуют по одному разу
         assert len(system) == 1

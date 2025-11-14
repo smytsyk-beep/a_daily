@@ -3,6 +3,7 @@ from app.main import app
 
 client = TestClient(app)
 
+
 def test_preview_ok():
     r = client.get("/orchestrator/preview?user_id=demo")
     assert r.status_code == 200

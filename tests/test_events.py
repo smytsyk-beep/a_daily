@@ -3,6 +3,7 @@ from app.main import app
 
 client = TestClient(app)
 
+
 def test_preview_creates_event():
     _ = client.get("/orchestrator/preview?user_id=test")
     r = client.get("/events/recent?limit=1")

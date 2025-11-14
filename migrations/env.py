@@ -7,8 +7,8 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 # ---PYTHONPATH: надёжно добавляем src/ относительно корня репозитория ---
-THIS_DIR = Path(__file__).resolve().parent          # .../migrations
-REPO_ROOT = THIS_DIR.parent                          # корень проекта
+THIS_DIR = Path(__file__).resolve().parent  # .../migrations
+REPO_ROOT = THIS_DIR.parent  # корень проекта
 SRC_DIR = REPO_ROOT / "src"
 if str(SRC_DIR) not in map(str, sys.path):
     sys.path.append(str(SRC_DIR))
@@ -21,6 +21,7 @@ cfg = getattr(context, "config", None)
 if cfg is None:
     # env.py импортирован напрямую (например, в тесте) — создаём Config вручную
     from alembic.config import Config
+
     ini_path = os.getenv("ALEMBIC_INI", str(REPO_ROOT / "alembic.ini"))
     cfg = Config(ini_path)
 
@@ -75,5 +76,6 @@ def _maybe_run_under_alembic() -> None:
         run_migrations_offline()
     else:
         run_migrations_online()
+
 
 _maybe_run_under_alembic()

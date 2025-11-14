@@ -8,6 +8,7 @@ import json
 
 client = TestClient(app)
 
+
 def test_seed_users_present_and_idempotent():
     """system/demo существуют, резолв не плодит дублей."""
     db = SessionLocal()
@@ -33,22 +34,19 @@ def test_seed_users_present_and_idempotent():
 
 
 def test_feedback_resolves_numeric_and_alias_user_ids():
-    r1 = client.post("/events/feedback",
-                     json={"user_id": "demo", "score": 4, "note": "via-alias"})
+    r1 = client.post(
+        "/events/feedback", json={"user_id": "demo", "score": 4, "note": "via-alias"}
+    )
     assert r1.status_code == 200 and r1.json().get("ok") is True
 
-    r2 = client.post("/events/feedback",
-                     json={"user_id": 1, "score": 5, "note": "via-numeric"})
+    r2 = client.post(
+        "/events/feedback", json={"user_id": 1, "score": 5, "note": "via-numeric"}
+    )
     assert r2.status_code == 200 and r2.json().get("ok") is True
 
     db = SessionLocal()
     try:
-        rows = (
-            db.query(EventFeedback)
-            .order_by(EventFeedback.id.desc())
-            .limit(2)
-            .all()
-        )
+        rows = db.query(EventFeedback).order_by(EventFeedback.id.desc()).limit(2).all()
         assert len(rows) == 2
 
         last, prev = rows[0], rows[1]

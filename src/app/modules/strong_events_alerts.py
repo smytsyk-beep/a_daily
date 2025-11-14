@@ -1,5 +1,7 @@
 from typing import List, Dict
+
 Atom = Dict[str, object]
+
 
 def compute(user_id: str, config: dict | None = None) -> List[Atom]:
     cfg = config or {}
