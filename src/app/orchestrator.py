@@ -35,7 +35,7 @@ def compute_atoms(user_id: str) -> List[Atom]:
         enabled = list_enabled_modules(db)
         enabled_modules = [m.module for m in enabled]
 
-    # 🔧 Фолбэк на случай пустой БД/отсутствия сидов в CI:
+    # 1) Фолбэк на пустую БД/отсутствие сидов
     if not enabled_modules:
         enabled_modules = list(MODULES.keys())
 
@@ -49,8 +49,12 @@ def compute_atoms(user_id: str) -> List[Atom]:
             if result:
                 atoms.extend(result)
         except Exception:
-            # не даём упасть всему конвейеру
+            # не даём упасть всему конвейеру из-за одного модуля
             continue
+
+    # 2) Жёсткий предохранитель: даже если модули молчат или упали, вернём 1 атом
+    if not atoms:
+        atoms = [{"kind": "headline", "text": "Your stars today"}]
 
     return rank_atoms(atoms)
 
