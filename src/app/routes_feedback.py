@@ -1,9 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from typing import Optional, Union
-from sqlalchemy.orm import Session
-
-from app.repo import get_db, log_event
+from app.repo import session_scope, log_event
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -18,12 +16,14 @@ class FeedbackIn(BaseModel):
 
 
 @router.post("/feedback")
-def post_feedback(payload: FeedbackIn, db: Session = Depends(get_db)):
-    ev = log_event(
-        db,
-        event="feedback",
-        user_id=payload.user_id,
-        score=payload.score,
-        payload={"event_id": payload.event_id, "note": payload.note},
-    )
-    return {"ok": True, "event_id": ev.id}
+def post_feedback(payload: FeedbackIn):
+    # создаём и закрываем сессию через наш контекст-менеджер
+    with session_scope() as db:
+        ev = log_event(
+            db,
+            event="feedback",
+            user_id=payload.user_id,
+            score=payload.score,
+            payload={"event_id": payload.event_id, "note": payload.note},
+        )
+        return {"ok": True, "event_id": ev.id}

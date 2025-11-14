@@ -14,6 +14,8 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.dialects.postgresql import JSONB
+import sqlalchemy as sa
 
 Base = declarative_base()
 
@@ -105,3 +107,27 @@ class EventFeedback(Base):
     score = Column(Integer)  # 1..5
     note = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class FeatureFlag(Base):
+    __tablename__ = "feature_flags"
+    key = sa.Column(sa.String(64), primary_key=True)
+    is_enabled = sa.Column(sa.Boolean, nullable=False, default=False)
+    payload = sa.Column(JSONB, nullable=True)
+    updated_at = sa.Column(
+        sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+    )
+
+
+class Event(Base):
+    __tablename__ = "events"
+    id = sa.Column(sa.BigInteger, primary_key=True)
+    user_id = sa.Column(sa.Integer, sa.ForeignKey("users.id", ondelete="SET NULL"))
+    kind = sa.Column(sa.String(32), nullable=False)
+    ts = sa.Column(
+        sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False
+    )
+    title = sa.Column(sa.String(256), nullable=False)
+    details = sa.Column(JSONB, nullable=True)
+
+    user = sa.orm.relationship("User", lazy="joined")
