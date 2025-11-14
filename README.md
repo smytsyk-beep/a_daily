@@ -31,6 +31,14 @@ PS D:\msn\a-project\a_daily> curl.exe -s -X POST "http://127.0.0.1:8080/events/f
 
 **curl "127.0.0.1:8080/orchestrator/preview?user_id=demo"
 
+Added: /digest/daily, /alerts/strong, /calendar.ics, /orchestrator/preview
+
+Infra: Alembic миграции, ensure_default_modules() (идемпотентный сид), стабилизация CI
+
+Contracts: событие preview_rendered, поле atoms, верхнеуровневый text, event_id
+
+Tests: 17 тестов (контракты, флаги фич, сиды)
+
 **POST feedback (PowerShell):
 
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8080/events/feedback" `
