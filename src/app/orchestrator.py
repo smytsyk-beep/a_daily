@@ -1,13 +1,17 @@
 from datetime import datetime
-from typing import List, Dict
+from typing import List, Dict, Union
+
+from sqlalchemy.orm import Session
 
 from app.repo import (
     session_scope,
     list_enabled_modules,
     log_event,
     ensure_default_modules,
+    get_content_atom,
+    DEFAULT_LOCALE,
 )
-from app.models import ModuleRegistry
+from app.models import ModuleRegistry, User
 from app.modules.daily_digest import compute as daily_digest_compute
 from app.modules.strong_events_alerts import compute as alerts_compute
 
@@ -21,6 +25,65 @@ MODULES = {
 }
 
 
+def _get_user_locale(user_ref: str | int) -> str:
+    """
+    Возвращает locale пользователя по user_id или tg_user_id.
+    Если пользователя нет или locale не задана — берём DEFAULT_LOCALE.
+    """
+    with session_scope() as db:
+        # numeric id
+        if isinstance(user_ref, int) or (
+            isinstance(user_ref, str) and user_ref.isdigit()
+        ):
+            uid = int(user_ref)
+            user = db.get(User, uid)
+        else:
+            alias = str(user_ref)
+            user = db.query(User).filter(User.tg_user_id == alias).first()
+
+        if not user or not user.locale:
+            return DEFAULT_LOCALE
+
+        return user.locale
+
+
+def _resolve_atoms_texts(
+    db: Session,
+    atoms: List[Atom],
+    locale: str,
+) -> List[Atom]:
+    """
+    Для атомов без text, но с topic_tag, подтягиваем тело из ContentAtom
+    с учётом locale (и фолбеком внутри get_content_atom).
+    """
+    resolved: List[Atom] = []
+
+    for atom in atoms:
+        # уже есть текст → ничего не делаем
+        if atom.get("text"):
+            resolved.append(atom)
+            continue
+
+        topic_tag = atom.get("topic_tag")
+        if not topic_tag:
+            resolved.append(atom)
+            continue
+
+        content_atom = get_content_atom(
+            db=db,
+            topic_tag=str(topic_tag),
+            locale=locale,
+        )
+        if content_atom:
+            # копия, чтобы не трогать оригинал, если он переиспользуется
+            atom = dict(atom)
+            atom.setdefault("text", content_atom.body)
+
+        resolved.append(atom)
+
+    return resolved
+
+
 def rank_atoms(atoms: List[Atom]) -> List[Atom]:
     """Сортируем по weight по убыванию (дефолт = 1)."""
     return sorted(atoms, key=lambda a: a.get("weight", 1), reverse=True)
@@ -31,13 +94,17 @@ def render_text(atoms: List[Atom]) -> str:
 
 
 def compute_atoms(user_id: str) -> List[Atom]:
-    """Читаем включённые модули из БД и собираем атомы."""
+    """Читаем включённые модули из БД, считаем атомы и подставляем текст по локали."""
 
+    # локаль пользователя (ru/en/es)
+    user_locale = _get_user_locale(user_id)
+
+    # 1) включённые модули
     with session_scope() as db:
         enabled = list_enabled_modules(db)
         enabled_modules = [m.module for m in enabled]
 
-    # 1) Фолбэк на пустую БД/отсутствие сидов
+    # фолбек на пустую БД/отсутствие сидов
     if not enabled_modules:
         enabled_modules = list(MODULES.keys())
 
@@ -54,9 +121,35 @@ def compute_atoms(user_id: str) -> List[Atom]:
             # не даём упасть всему конвейеру из-за одного модуля
             continue
 
-    # 2) Жёсткий предохранитель: даже если модули молчат или упали, вернём 1 атом
+    # жёсткий предохранитель: даже если модули молчат или упали, вернём 1 атом
     if not atoms:
-        atoms = [{"kind": "headline", "text": "Your stars today"}]
+        atoms = [
+            {"module": "orchestrator", "kind": "headline", "text": "Your stars today"}
+        ]
+        return rank_atoms(atoms)
+
+    # 2) Подставляем текст из ContentAtom, если его ещё нет
+    with session_scope() as db:
+        for atom in atoms:
+            # если текст уже есть, ничего не делаем (для совместимости со старыми модулями)
+            if atom.get("text"):
+                continue
+
+            topic_tag = atom.get("topic_tag")
+            if not topic_tag:
+                continue
+
+            ca = get_content_atom(
+                db=db,
+                topic_tag=str(topic_tag),
+                locale=user_locale,
+                fallback_locale=DEFAULT_LOCALE,
+            )
+            if ca:
+                atom["text"] = ca.body
+            else:
+                # грубый фолбек: хотя бы что-то осмысленное
+                atom["text"] = str(topic_tag)
 
     return rank_atoms(atoms)
 

@@ -20,7 +20,7 @@ def test_strong_alerts_contract():
 
 
 def test_calendar_ics_contract():
-    r = client.get("/calendar.ics")
+    r = client.get("/calendar.ics", params={"user_id": "system"})
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/calendar")
     assert "BEGIN:VCALENDAR" in r.text

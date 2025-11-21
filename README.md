@@ -43,3 +43,11 @@ Tests: 17 тестов (контракты, флаги фич, сиды)
 
 Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8080/events/feedback" `
   -ContentType "application/json" -Body '{"user_id":"demo","score":4,"note":"nice"}'
+
+Added: /digest/daily, /alerts/strong, /calendar.ics, /orchestrator/preview
+
+Infra: Alembic миграции, ensure_default_modules() (идемпотентный сид), стабилизация CI
+
+Contracts: событие preview_rendered, поле atoms, верхнеуровневый text, event_id
+
+Tests: 17 тестов (контракты, флаги фич, сиды)

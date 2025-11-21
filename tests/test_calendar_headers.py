@@ -6,7 +6,7 @@ client = TestClient(app)
 
 
 def test_calendar_ics_content_type():
-    r = client.get("/calendar.ics")
+    r = client.get("/calendar.ics", params={"user_id": "system"})
     assert r.status_code == 200
     ct = r.headers.get("content-type", "")
     assert ct.lower().startswith("text/calendar")
