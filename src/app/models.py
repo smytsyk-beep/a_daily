@@ -24,8 +24,9 @@ class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     tg_user_id = Column(String(64), unique=True, index=True, nullable=False)
-    locale = Column(String(8), default="en")
     created_at = Column(DateTime, default=datetime.utcnow)
+    locale = Column(String(8), nullable=True, default="en")
+    timezone = Column(String(64), nullable=True)
 
 
 class BirthData(Base):
@@ -132,3 +133,24 @@ class Event(Base):
     details = sa.Column(JSONB, nullable=True)
 
     user = sa.orm.relationship("User", lazy="joined")
+
+
+class UserFeatureFlag(Base):
+    __tablename__ = "user_feature_flags"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    feature_key = Column(
+        String(64),
+        ForeignKey("feature_flags.key", ondelete="CASCADE"),
+        nullable=False,
+    )
+    enabled = Column(Boolean, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "feature_key", name="uq_user_feature_flag"),
+    )

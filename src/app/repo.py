@@ -3,11 +3,12 @@ from datetime import datetime
 from typing import Optional, Union, Generator, List
 import json
 
-from sqlalchemy import desc, text
+from sqlalchemy import desc, text, select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.models import User, ModuleRegistry, EventFeedback
+from . import models
 
 DEFAULT_LOCALE = "en"
 
@@ -114,6 +115,14 @@ def _get_or_create_user(db: Session, user_ref: Optional[Union[str, int]]) -> int
     return u.id
 
 
+def resolve_user_id(db: Session, user_ref: Optional[Union[str, int]]) -> int:
+    """
+    Публичная обёртка вокруг _get_or_create_user.
+    Принимает numeric id или tg_user_id, возвращает внутренний user.id.
+    """
+    return _get_or_create_user(db, user_ref)
+
+
 def log_event(
     db: Session,
     event: str,
@@ -178,6 +187,44 @@ def ensure_default_modules(db: Session) -> None:
     db.expire_all()
 
 
+def get_content_atom(
+    db: Session,
+    topic_tag: str,
+    locale: str,
+    fallback_locale: str = DEFAULT_LOCALE,
+) -> Optional[models.ContentAtom]:
+    """
+    Возвращает ContentAtom по topic_tag и локали с фолбеком на fallback_locale.
+    """
+
+    # 1. пробуем локаль пользователя
+    stmt = (
+        select(models.ContentAtom)
+        .where(
+            models.ContentAtom.topic_tag == topic_tag,
+            models.ContentAtom.locale == locale,
+        )
+        .limit(1)
+    )
+    atom = db.execute(stmt).scalar_one_or_none()
+    if atom is not None:
+        return atom
+
+    # 2. фолбек, например на 'en'
+    if fallback_locale and fallback_locale != locale:
+        stmt_fallback = (
+            select(models.ContentAtom)
+            .where(
+                models.ContentAtom.topic_tag == topic_tag,
+                models.ContentAtom.locale == fallback_locale,
+            )
+            .limit(1)
+        )
+        return db.execute(stmt_fallback).scalar_one_or_none()
+
+    return None
+
+
 __all__ = [
     "get_session",
     "session_scope",
@@ -186,4 +233,6 @@ __all__ = [
     "log_event",
     "list_recent_events",
     "ensure_default_modules",
+    "get_content_atom",
+    "resolve_user_id",
 ]
