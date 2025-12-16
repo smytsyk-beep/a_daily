@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Union, Generator, List
 import json
 
@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.models import User, ModuleRegistry, EventFeedback
-from . import models
+
+from app import models
+
+# from app.services.timezone import tz_by_latlon
+from app.geo import tz_by_latlon
+
 
 DEFAULT_LOCALE = "en"
 
@@ -115,10 +120,19 @@ def _get_or_create_user(db: Session, user_ref: Optional[Union[str, int]]) -> int
     return u.id
 
 
-def resolve_user_id(db: Session, user_ref: Optional[Union[str, int]]) -> int:
+def resolve_user_id(
+    db: Session,
+    user_ref: Optional[Union[str, int]],
+) -> int:
     """
-    Публичная обёртка вокруг _get_or_create_user.
-    Принимает numeric id или tg_user_id, возвращает внутренний user.id.
+    Унифицированное разрешение user_ref → users.id.
+
+    - Если user_ref = None → системный пользователь (id=1), создаётся при необходимости.
+    - Если int или строка-число → считаем, что это числовой id, создаём при необходимости.
+    - Если строка не-число → считаем как tg_user_id, создаём пользователя, если его ещё нет.
+
+    Фактически это тонкая обёртка над _get_or_create_user, чтобы
+    старый контракт (resolve_user_id) продолжал работать.
     """
     return _get_or_create_user(db, user_ref)
 
@@ -191,7 +205,7 @@ def get_content_atom(
     db: Session,
     topic_tag: str,
     locale: str,
-    fallback_locale: str = DEFAULT_LOCALE,
+    fallback_locale: str = "en",
 ) -> Optional[models.ContentAtom]:
     """
     Возвращает ContentAtom по topic_tag и локали с фолбеком на fallback_locale.
@@ -225,6 +239,96 @@ def get_content_atom(
     return None
 
 
+# ---------------------------------------------------------------------------
+# BirthData helpers
+# ---------------------------------------------------------------------------
+
+
+def get_birth_data(db: Session, user_id: int) -> Optional[models.BirthData]:
+    """
+    Возвращает последнюю запись BirthData для пользователя, если есть.
+    """
+    return (
+        db.query(models.BirthData)
+        .filter(models.BirthData.user_id == user_id)
+        .order_by(models.BirthData.id.desc())
+        .first()
+    )
+
+
+def upsert_birth_data(
+    db: Session,
+    user_ref: Optional[Union[str, int]] = None,
+    birth_date: date | None = None,
+    birth_time: Optional[str] = None,
+    place: str | None = None,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    tz: Optional[str] = None,
+    *,
+    user_id: Optional[int] = None,
+) -> models.BirthData:
+    """
+    Создаёт или обновляет BirthData для пользователя.
+
+    Параметры:
+    - user_ref — numeric id или tg_user_id (как в log_event/recent_events),
+    - user_id  — явный users.id; если передан, он важнее user_ref,
+    - birth_date, birth_time, place, lat, lon, tz — данные рождения.
+
+    Логика:
+    - определяем user_id (через _get_or_create_user, если нужно);
+    - если tz не передан, но есть lat/lon — пробуем tz_by_latlon(lat, lon);
+    - обновляем (последнюю) запись BirthData пользователя или создаём новую;
+    - возвращаем актуальный объект BirthData.
+    """
+
+    # 1. Определяем пользователя
+    if user_id is None:
+        user_id = _get_or_create_user(db, user_ref)
+
+    # 2. Таймзона
+    effective_tz = tz
+    if effective_tz is None and lat is not None and lon is not None:
+        try:
+            effective_tz = tz_by_latlon(lat, lon)
+        except Exception:
+            # stub/ошибка внутри tz_by_latlon не должна ломать основной поток
+            effective_tz = None
+
+    # 3. Ищем последнюю запись BirthData для пользователя
+    bd = (
+        db.query(models.BirthData)
+        .filter(models.BirthData.user_id == user_id)
+        .order_by(models.BirthData.id.desc())
+        .first()
+    )
+
+    # 4. Создаём или обновляем запись
+    if bd is None:
+        bd = models.BirthData(
+            user_id=user_id,
+            birth_date=birth_date,
+            birth_time=birth_time,
+            tz=effective_tz,
+            place=place,
+            lat=lat,
+            lon=lon,
+        )
+        db.add(bd)
+    else:
+        bd.birth_date = birth_date
+        bd.birth_time = birth_time
+        bd.tz = effective_tz
+        bd.place = place
+        bd.lat = lat
+        bd.lon = lon
+
+    db.commit()
+    db.refresh(bd)
+    return bd
+
+
 __all__ = [
     "get_session",
     "session_scope",
@@ -234,5 +338,7 @@ __all__ = [
     "list_recent_events",
     "ensure_default_modules",
     "get_content_atom",
+    "get_birth_data",
+    "upsert_birth_data",
     "resolve_user_id",
 ]
