@@ -28,6 +28,40 @@ class User(Base):
     locale = Column(String(8), nullable=True, default="en")
     timezone = Column(String(64), nullable=True)
 
+    # Массив тегов интересов: ["work", "love", "selfcare", "money", "creativity", ...]
+    digest_interests = Column(JSONB, nullable=True)
+
+    # Предпочитаемая длина текста: "short" | "medium" | "long"
+    digest_length_preference = Column(String(16), nullable=True)
+
+    # --- Telegram / daily delivery settings ---
+    # Локальное время отправки дайджеста в формате "HH:MM" (например, "08:00")
+    delivery_time_local = Column(String(8), nullable=True)
+
+    # Включена ли вообще ежедневная доставка
+    delivery_enabled = Column(Boolean, nullable=True)
+
+    # Quiet mode — если True, пользователь временно «успокоен»
+    quiet_mode = Column(Boolean, nullable=True)
+
+    # === Новые поля под онбординг и prefs ===
+    display_name = Column(String, nullable=True)
+
+    age_gate_accepted_at = Column(DateTime(timezone=True), nullable=True)
+    disclaimer_accepted_at = Column(DateTime(timezone=True), nullable=True)
+    birthdata_consent_at = Column(DateTime(timezone=True), nullable=True)
+
+    # общие пользовательские настройки (JSONB)
+    # пример структуры:
+    # {
+    #   "focus_topics": ["work", "love"],
+    #   "delivery_mode": "digest",
+    #   "delivery_slot": "morning",
+    #   "quiet_hours": {"from": "22:00", "to": "07:00"},
+    #   "text_length": "medium"
+    # }
+    prefs = Column(JSONB, nullable=True)
+
 
 class BirthData(Base):
     __tablename__ = "birth_data"
@@ -69,6 +103,28 @@ class ContentAtom(Base):
     style = Column(String(32), default="neutral")
     body = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    # формальный триггер: напр. "Mercury_trine_Moon", "Moon_phase_Waxing"
+    trigger = Column(String, nullable=True, index=True)
+
+    # теги домов, в которые попадает событие: ["III", "VI"]
+    # храним как JSONB-массив строк
+    house_tags = Column(JSONB, nullable=True)
+
+    # теги "сфер жизни"/персоны: ["work", "relationships", "selfcare"]
+    persona_tags = Column(JSONB, nullable=True)
+
+    # подсказка по силе: "light", "medium", "strong", "light_to_medium" и т.п.
+    strength_hint = Column(String, nullable=True)
+
+    # короткий текст (short, 280–350 символов)
+    copy_short = Column(Text, nullable=True)
+
+    # длинный текст (long, 600+ символов)
+    copy_long = Column(Text, nullable=True)
+
+    # опциональный call-to-action (ритуал, упражнение и т.п.)
+    cta = Column(Text, nullable=True)
 
 
 class Delivery(Base):

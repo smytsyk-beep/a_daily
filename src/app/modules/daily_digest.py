@@ -4,60 +4,78 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Dict, Any
 
-from app.repo import session_scope
-from app.astro_core import ensure_daily_transits
+from app.repo import session_scope, resolve_user_id
+from app.daily_digest_service import build_daily_digest_for_user
 
 Atom = Dict[str, Any]
 
 
 def compute(user_id: str, config: dict | None = None) -> List[Atom]:
     """
-    Собирает атомы для ежедневного дайджеста.
+    Собирает payload для ежедневного дайджеста.
 
-    Логика:
-      * читаем транзиты на сегодня через astro_core.ensure_daily_transits
-      * каждый TransitEvent превращаем в Atom с topic_tag/weight
-      * текст НЕ заполняем — его потом подставит оркестратор через ContentAtom.
+    Новая логика:
+      * через resolve_user_id получаем numeric user_id;
+      * вызываем build_daily_digest_for_user, который:
+          - подтягивает транзиты и глобальные события,
+          - через RAG выбирает ContentAtom'ы,
+          - генерирует стабильный текст дайджеста;
+      * упаковываем всё это в один Atom, который
+        модуль/оркестратор может дальше использовать.
+
+    Формат возвращаемого атома (superset старого контракта):
+      {
+        "module": "daily_digest",
+        "kind": "digest",
+        "topic_tag": "generic_day_overview",
+        "weight": 1.0,
+        "time_local": "08:00",
+        "date": "2025-01-10",
+        "locale": "en",
+        "length": "medium",
+        "title": "...",
+        "body": "...",
+        "affirmation": "...",
+        "disclaimer": "..."
+      }
     """
     cfg = config or {}
-    # пока просто прокидываем в атом, чтобы модуль доставки мог учитывать локальное время
+
+    # Как и раньше, отдаём локальное время в атом,
+    # чтобы дальше логика доставки могла его использовать.
     time_local = cfg.get("time_local", "08:00")
+
+    # Возможность принудительно задать длину текста: "short" | "medium" | "long"
+    length_override = cfg.get("length")
 
     today = datetime.utcnow().date()
 
     with session_scope() as db:
-        events = ensure_daily_transits(db, user_ref=user_id, day=today)
+        # user_id сюда приходит как user_ref (tg_user_id и т.п.)
+        numeric_user_id = resolve_user_id(db, user_ref=user_id)
 
-    atoms: List[Atom] = []
-    for ev in events:
-        payload = ev.payload or {}
-
-        topic_tag = (
-            payload.get("topic_tag") or payload.get("tag") or "generic_day_overview"
-        )
-        strength = float(payload.get("strength", 1.0))
-
-        atoms.append(
-            {
-                "module": "daily_digest",
-                "kind": payload.get("kind", "digest"),
-                "topic_tag": topic_tag,
-                "weight": strength,
-                "time_local": time_local,
-                # text намеренно не заполняем — мультиязычие через ContentAtom
-            }
+        digest = build_daily_digest_for_user(
+            db=db,
+            user_id=numeric_user_id,
+            day=today,
+            user_profile=None,  # профиль построится из models.User
+            length_override=length_override,
         )
 
-    # жёсткий фолбек, если ядро по какой-то причине вернуло пусто
-    if not atoms:
-        atoms = [
-            {
-                "module": "daily_digest",
-                "kind": "digest",
-                "topic_tag": "generic_day_overview",
-                "weight": 1.0,
-                "time_local": time_local,
-            }
-        ]
+    atom: Atom = {
+        "module": "daily_digest",
+        "kind": "digest",
+        "topic_tag": "generic_day_overview",
+        "weight": 1.0,  # при желании потом можно связать с силой событий
+        "time_local": time_local,
+        # новые поля с текстом дайджеста
+        "date": digest.date.isoformat(),
+        "locale": digest.locale,
+        "length": digest.length,
+        "title": digest.title,
+        "body": digest.body,
+        "affirmation": digest.affirmation,
+        "disclaimer": digest.disclaimer,
+    }
 
-    return atoms
+    return [atom]
