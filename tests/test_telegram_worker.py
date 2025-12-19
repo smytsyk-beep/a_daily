@@ -1,4 +1,5 @@
 # tests/test_telegram_worker.py
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -12,7 +13,7 @@ from app.telegram_worker import send_daily_digests_for_day
 def test_send_daily_digests_for_day_sends_only_to_enabled_users(monkeypatch):
     sent_calls: list[dict] = []
 
-    # Подменяем send_message, чтобы не ходить в Telegram
+    # ---- подмена send_message, чтобы не ходить в Telegram ----
     def fake_send_message(chat_id, text, parse_mode=None, reply_markup=None):
         sent_calls.append(
             {
@@ -23,13 +24,16 @@ def test_send_daily_digests_for_day_sends_only_to_enabled_users(monkeypatch):
             }
         )
 
-    monkeypatch.setattr(
-        "app.telegram_worker.send_message",
-        fake_send_message,
-    )
+    monkeypatch.setattr("app.telegram_worker.send_message", fake_send_message)
 
-    # Подменяем daily_digest.compute, чтобы не зависеть от RAG/LLM
-    def fake_compute(user_id: str, config=None):
+    # сюда положим внутренний user.id, чтобы использовать его и в fake_compute, и в ассертах
+    user1_id: int | None = None
+
+    # ---- подмена daily_digest.compute, чтобы не зависеть от RAG/LLM ----
+    def fake_compute(user_id: int, config=None):
+        # убеждаемся, что воркер передал во внутрь именно internal id
+        assert user1_id is None or user_id == user1_id
+
         return [
             {
                 "title": f"Digest for {user_id}",
@@ -45,11 +49,11 @@ def test_send_daily_digests_for_day_sends_only_to_enabled_users(monkeypatch):
         fake_compute,
     )
 
-    # Подменяем session_scope внутри telegram_worker так,
-    # чтобы контролировать набор пользователей,
-    # но не нарушать уникальный индекс tg_user_id.
+    # ---- подмена session_scope внутри telegram_worker ----
     @contextmanager
     def fake_session_scope():
+        nonlocal user1_id
+
         db = SessionLocal()
         try:
             # 1) Выключаем доставку для всех существующих пользователей с tg_user_id
@@ -89,26 +93,30 @@ def test_send_daily_digests_for_day_sends_only_to_enabled_users(monkeypatch):
 
             db.commit()
 
+            # сохраняем внутренний id user1 для проверок ниже
+            user1_id = user1.id
+
             yield db
         finally:
             db.close()
 
-    monkeypatch.setattr(
-        "app.telegram_worker.session_scope",
-        fake_session_scope,
-    )
+    monkeypatch.setattr("app.telegram_worker.session_scope", fake_session_scope)
 
-    # выполняем worker
+    # ---- выполняем worker ----
     count = send_daily_digests_for_day(on_date=date(2025, 1, 1))
 
     # 1 сообщение (только user1)
     assert count == 1
     assert len(sent_calls) == 1
 
+    assert user1_id is not None
+
     call = sent_calls[0]
-    # tg_user_id "1001" -> int 1001
+    # chat_id = tg_user_id (строка "1001" превращается в int 1001 в воркере)
     assert call["chat_id"] == 1001
-    assert "Digest for 1001" in call["text"]
+
+    # внутри текста теперь должен быть internal user.id
+    assert f"Digest for {user1_id}" in call["text"]
     assert "Test body" in call["text"]
     assert "Test affirmation" in call["text"]
     assert call["parse_mode"] == "Markdown"

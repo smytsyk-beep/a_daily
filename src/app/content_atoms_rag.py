@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import List, Optional, Sequence, Tuple
 
 from sqlalchemy.orm import Session
@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 from app import models
 from app.astro_core import ensure_daily_transits
 from app.astro.global_events import compute_global_events, GlobalEvent
+
+import sqlalchemy as sa
+from app.astro.transit_service import compute_daily_digest_transits
 
 
 # ================== Вспомогательные структуры ==================
@@ -57,6 +60,7 @@ class SelectedAtom:
     score: float
     transit: Optional[models.TransitEvent] = None
     global_event: Optional[GlobalEvent] = None
+    event: Optional[models.Event] = None
 
 
 # ================== Маппинг событий в запросы ==================
@@ -126,6 +130,74 @@ def global_event_to_atom_query(
     )
 
 
+def _trigger_from_transit_aspect_details(details: dict) -> str:
+    # mars_square_sun
+    t = str(details.get("transit_body", "")).strip().lower()
+    a = str(details.get("aspect", "")).strip().lower()
+    n = str(details.get("natal_body", "")).strip().lower()
+    return f"{t}_{a}_{n}".strip("_")
+
+
+def event_to_atom_query(
+    ev: models.Event,
+    user_profile: Optional[UserProfile] = None,
+) -> AtomQuery:
+    details = ev.details or {}
+    trigger = details.get("trigger") or _trigger_from_transit_aspect_details(details)
+
+    persona_tags: List[str] = []
+    if user_profile and user_profile.interests:
+        persona_tags = _normalize_tags(user_profile.interests)
+
+    locale = getattr(user_profile, "locale", "en")
+
+    return AtomQuery(
+        locale=locale,
+        trigger=str(trigger).lower() if trigger else None,
+        house_tags=[],
+        persona_tags=persona_tags,
+    )
+
+
+def _strength_from_transit_details(details: dict) -> float:
+    """
+    Чем ближе к точному аспекту (orb -> 0), тем выше сила.
+    Для digest (orb_max=2): strength ~ [0.5..1.0]
+    Для strong (orb_max=1): strength ~ [0.6..1.0]
+    """
+    try:
+        orb = float(details.get("orb_deg", 2.0))
+    except (TypeError, ValueError):
+        orb = 2.0
+
+    bucket = (details.get("bucket") or "digest").lower()
+    orb_max = 1.0 if bucket == "strong" else 2.0
+
+    x = 1.0 - min(max(orb, 0.0), orb_max) / orb_max
+    # не даём слишком низко падать
+    floor = 0.6 if bucket == "strong" else 0.5
+    return max(floor, x)
+
+
+def _load_digest_transit_events_for_day(
+    db: Session, user_id: int, day: date
+) -> List[models.Event]:
+    day_iso = day.isoformat()
+
+    rows = (
+        db.query(models.Event)
+        .filter(
+            models.Event.user_id == user_id,
+            models.Event.kind == "transit_aspect",
+            models.Event.details["bucket"].as_string() == "digest",
+            models.Event.details["local_date"].as_string() == day_iso,
+        )
+        .order_by(models.Event.ts.asc())
+        .all()
+    )
+    return rows
+
+
 # ================== Поиск и скоринг атомов ==================
 
 
@@ -167,20 +239,31 @@ def _find_atoms_for_query(
     max_atoms: int = 3,
 ) -> List[Tuple[models.ContentAtom, float]]:
     """
-    Ищем кандидатов в content_atoms под конкретный AtomQuery.
+    Ищем кандидатов в content_atoms под AtomQuery.
 
-    Возвращаем список (atom, semantic_score) длиной до max_atoms.
+    Улучшения:
+    - trigger match делаем case-insensitive через lower()
+    - если по locale ничего нет — фолбек на 'en'
     """
-    q = db.query(models.ContentAtom).filter(models.ContentAtom.locale == query.locale)
 
-    primary_candidates = []
-    if query.trigger:
-        primary_candidates = q.filter(models.ContentAtom.trigger == query.trigger).all()
+    def _run(locale: str) -> List[models.ContentAtom]:
+        q = db.query(models.ContentAtom).filter(models.ContentAtom.locale == locale)
 
-    candidates = primary_candidates or q.all()
+        if query.trigger:
+            trig = query.trigger.lower()
+            primary = q.filter(sa.func.lower(models.ContentAtom.trigger) == trig).all()
+            if primary:
+                return primary
+
+        return q.all()
+
+    candidates = _run(query.locale)
+    if not candidates and query.locale != "en":
+        candidates = _run("en")
 
     scored: List[Tuple[models.ContentAtom, float]] = []
     for atom in candidates:
+        # для семантики нужно сохранить оригинальный query.locale (ок)
         s = _semantic_score_atom_for_query(atom, query)
         scored.append((atom, s))
 
@@ -217,26 +300,46 @@ def select_atoms_for_day(
     if user_profile is None:
         user_profile = UserProfile(locale="en")
 
-    # 1. Транзиты (stub/реальные)
-    transits = ensure_daily_transits(db, user_ref=user_id, day=day)
+    # 1. Транзиты из events (precompute)
+    transit_events = _load_digest_transit_events_for_day(db, user_id=user_id, day=day)
+
+    # fallback: если precompute не запускался — считаем на лету (без записи в БД)
+    if not transit_events:
+        aspects = compute_daily_digest_transits(db, user_id=user_id, local_date=day)
+        # превращаем в "как бы events"
+        transit_events = []
+        for a in aspects:
+            details = {
+                "bucket": "digest",
+                "local_date": day.isoformat(),
+                "tzid": getattr(user_profile, "timezone", None),
+                "transit_body": a.transit_body,
+                "natal_body": a.natal_body,
+                "aspect": a.aspect,
+                "orb_deg": a.orb_deg,
+            }
+            transit_events.append(
+                models.Event(
+                    user_id=user_id,
+                    kind="transit_aspect",
+                    ts=datetime.now(timezone.utc),
+                    title="",
+                    details=details,
+                )
+            )
 
     # 2. Глобальные события (stub-фазы Луны)
     global_events = compute_global_events(day, day)
 
     selected: List[SelectedAtom] = []
 
-    # 3. Транзиты
-    for tr in transits:
-        q = transit_to_atom_query(tr, user_profile=user_profile)
+    # 3. Транзиты (events)
+    for ev in transit_events:
+        q = event_to_atom_query(ev, user_profile=user_profile)
         candidates = _find_atoms_for_query(db, q, max_atoms=2)
 
-        # сила события: по payload["strength"], по умолчанию 0.5
-        strength = 0.5
-        if tr.payload and isinstance(tr.payload, dict):
-            try:
-                strength = float(tr.payload.get("strength", strength))
-            except (TypeError, ValueError):
-                pass
+        details = ev.details or {}
+        strength = _strength_from_transit_details(details)
 
         for atom, sem_score in candidates:
             total_score = sem_score + strength
@@ -244,8 +347,9 @@ def select_atoms_for_day(
                 SelectedAtom(
                     atom=atom,
                     score=total_score,
-                    transit=tr,
+                    transit=None,
                     global_event=None,
+                    event=ev,
                 )
             )
 

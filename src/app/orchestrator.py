@@ -108,7 +108,15 @@ def compute_atoms(user_id: str) -> List[Atom]:
     if not enabled_modules:
         enabled_modules = list(MODULES.keys())
 
-    atoms: List[Atom] = []
+    atoms: List[Atom] = [
+        {
+            "module": "orchestrator",
+            "kind": "headline",
+            "text": "Your stars today",
+            "weight": 0,
+        }
+    ]
+
     for name in enabled_modules:
         fn = MODULES.get(name)
         if not fn:
@@ -120,13 +128,6 @@ def compute_atoms(user_id: str) -> List[Atom]:
         except Exception:
             # не даём упасть всему конвейеру из-за одного модуля
             continue
-
-    # жёсткий предохранитель: даже если модули молчат или упали, вернём 1 атом
-    if not atoms:
-        atoms = [
-            {"module": "orchestrator", "kind": "headline", "text": "Your stars today"}
-        ]
-        return rank_atoms(atoms)
 
     # 2) Подставляем текст из ContentAtom, если его ещё нет
     with session_scope() as db:

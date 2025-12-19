@@ -1,20 +1,19 @@
 # src/app/astro/skyfield_client.py
+
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Literal
+from typing import Dict, Literal, Optional
 
-from datetime import datetime, timezone
-
-# ВАЖНО: этот модуль не импортируется нигде автоматически,
-# поэтому отсутствие skyfield в окружении сейчас ничего не ломает.
-# Когда дойдём до реальной интеграции — добавим пакет в requirements.
+# Мягкий фолбек: чтобы импорт не ломал тесты, если skyfield не установлен.
 try:
-    from skyfield.api import load, wgs84
-except ImportError:  # мягкий фолбек, чтобы не падали импорт-тесты
-    load = None  # type: ignore[assignment]
+    from skyfield.api import Loader, wgs84
+except ImportError:  # pragma: no cover
+    Loader = None  # type: ignore[assignment]
     wgs84 = None  # type: ignore[assignment]
 
 
@@ -48,7 +47,7 @@ ZODIAC_SIGNS = [
 ]
 
 
-@dataclass
+@dataclass(frozen=True)
 class BodyPosition:
     body: BodyName
     lon: float  # эклиптическая долгота 0..360
@@ -58,57 +57,84 @@ class BodyPosition:
     sign_degree: float  # 0..30 внутри знака
 
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
-# имя файла можно будет переопределить через env позже
-EPHEMERIS_FILE = DATA_DIR / "de440s.bsp"
-
-
 def _require_skyfield() -> None:
-    if load is None or wgs84 is None:
+    if Loader is None or wgs84 is None:
         raise RuntimeError(
-            "skyfield не установлен. "
-            "Добавь пакет 'skyfield' в зависимости приложения."
+            "skyfield не установлен. Добавь пакет 'skyfield' в зависимости приложения."
         )
 
 
-@lru_cache(maxsize=1)
-def get_ephemeris():
-    """
-    Ленивая загрузка файла эфемерид.
-
-    Ожидаем, что de440s.bsp уже лежит в /app/src/app/astro/data/
-    и попадает в Docker-образ.
-    """
-    _require_skyfield()
-    return load(str(EPHEMERIS_FILE))  # type: ignore[no-any-return]
+def _project_root() -> Path:
+    # .../src/app/astro/skyfield_client.py -> root = parents[3]
+    return Path(__file__).resolve().parents[3]
 
 
-@lru_cache(maxsize=1)
-def get_timescale():
-    _require_skyfield()
-    return load.timescale()  # type: ignore[no-any-return]
+def _norm_deg(x: float) -> float:
+    x = x % 360.0
+    return x + 360.0 if x < 0 else x
 
 
 def _to_utc(dt: datetime) -> datetime:
     """Гарантируем aware datetime в UTC."""
     if dt.tzinfo is None:
-        # считаем, что это уже UTC
+
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
+
+
+def _get_ephemeris_dir() -> Path:
+    # По умолчанию: <repo>/data/ephemeris
+    default_dir = _project_root() / "data" / "ephemeris"
+    return Path(os.getenv("ASTRO_EPHEMERIS_DIR", str(default_dir)))
+
+
+def _get_ephemeris_file() -> str:
+    return os.getenv("ASTRO_EPHEMERIS_FILE", "de440s.bsp")
+
+
+@lru_cache(maxsize=1)
+def get_loader() -> "Loader":
+    """
+    Loader сам скачает *.bsp при первом вызове и будет использовать локальный кэш.
+    """
+    _require_skyfield()
+    ephem_dir = _get_ephemeris_dir()
+    ephem_dir.mkdir(parents=True, exist_ok=True)
+    return Loader(str(ephem_dir))  # type: ignore[no-any-return]
+
+
+@lru_cache(maxsize=1)
+def get_ephemeris():
+    """
+    Автоскачивание и кэш эфемерид.
+    Файл будет лежать в ASTRO_EPHEMERIS_DIR / ASTRO_EPHEMERIS_FILE.
+    """
+    loader = get_loader()
+    return loader(_get_ephemeris_file())  # type: ignore[no-any-return]
+
+
+@lru_cache(maxsize=1)
+def get_timescale():
+    loader = get_loader()
+    return loader.timescale()  # type: ignore[no-any-return]
 
 
 def compute_body_position(
     body: BodyName,
     dt_utc: datetime,
-    lat: float,
-    lon: float,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    *,
+    topocentric: bool = False,
 ) -> BodyPosition:
     """
-    Позиция планеты/Луны в эклиптических координатах
-    для заданного момента и точки на Земле.
+    Позиция тела в эклиптических координатах.
+
+    По умолчанию: геоцентрическая (рекомендовано для базового натала/транзитов).
+    Если topocentric=True — использует наблюдателя (lat/lon) и учитывает параллакс,
+    что особенно заметно для Луны.
     """
 
-    _require_skyfield()
     eph = get_ephemeris()
     ts = get_timescale()
 
@@ -116,13 +142,34 @@ def compute_body_position(
     t = ts.from_datetime(dt_utc)
 
     earth = eph["earth"]
-    location = earth + wgs84.latlon(lat_degrees=lat, lon_degrees=lon)  # type: ignore[arg-type]
 
-    sf_body = eph[body]
-    astrometric = location.at(t).observe(sf_body)
-    lon_el, lat_el, distance = astrometric.ecliptic_latlon()
+    BODY_TO_KERNEL = {
+        "sun": "sun",
+        "moon": "moon",
+        "mercury": "mercury",
+        "venus": "venus",
+        "mars": "mars barycenter",
+        "jupiter": "jupiter barycenter",
+        "saturn": "saturn barycenter",
+        "uranus": "uranus barycenter",
+        "neptune": "neptune barycenter",
+        "pluto": "pluto barycenter",
+    }
 
-    lon_deg = float(lon_el.degrees)
+    sf_body = eph[BODY_TO_KERNEL[body]]
+
+    if topocentric:
+        if lat is None or lon is None:
+            raise ValueError("lat/lon обязательны при topocentric=True")
+        observer = earth + wgs84.latlon(lat_degrees=lat, lon_degrees=lon)  # type: ignore[arg-type]
+        astrometric = observer.at(t).observe(sf_body)
+    else:
+        astrometric = earth.at(t).observe(sf_body)
+
+    apparent = astrometric.apparent()
+    lat_el, lon_el, distance = apparent.ecliptic_latlon()
+
+    lon_deg = _norm_deg(float(lon_el.degrees))
     lat_deg = float(lat_el.degrees)
     dist_au = float(distance.au)
 
@@ -142,13 +189,11 @@ def compute_body_position(
 
 def compute_all_bodies(
     dt_utc: datetime,
-    lat: float,
-    lon: float,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    *,
+    topocentric: bool = False,
 ) -> Dict[BodyName, BodyPosition]:
-    """
-    Удобный helper: вернуть словарь с позициями всех тел,
-    которые нам нужны для натала.
-    """
 
     bodies: list[BodyName] = [
         "sun",
@@ -163,7 +208,9 @@ def compute_all_bodies(
         "pluto",
     ]
     return {
-        name: compute_body_position(name, dt_utc=dt_utc, lat=lat, lon=lon)
+        name: compute_body_position(
+            name, dt_utc=dt_utc, lat=lat, lon=lon, topocentric=topocentric
+        )
         for name in bodies
     }
 
@@ -175,4 +222,5 @@ __all__ = [
     "compute_all_bodies",
     "get_ephemeris",
     "get_timescale",
+    "get_loader",
 ]
