@@ -38,8 +38,10 @@ def _send_digest_for_user(user: models.User, on_date: date) -> bool:
 
     prefs = get_telegram_prefs_from_user(user)
 
+    # ВАЖНО: в compute всегда передаём internal user.id, не tg_user_id
+
     atoms = daily_digest_module.compute(
-        user_id=user.tg_user_id,
+        user_id=user.id,
         config={"time_local": prefs.time_local},
     )
     if not atoms:

@@ -2,6 +2,7 @@ import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 
 class Settings(BaseSettings):
@@ -32,9 +33,18 @@ class Settings(BaseSettings):
     # логирование
     LOG_LEVEL: str = "INFO"
 
+    # Skyfield
+    astro_ephemeris_dir: str = Field(
+        default="data/ephemeris", description="Dir for Skyfield ephemeris cache"
+    )
+    astro_ephemeris_file: str = Field(
+        default="de440s.bsp", description="Ephemeris filename"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="forbid",
     )
 
     @property
