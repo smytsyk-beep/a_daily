@@ -1,13 +1,16 @@
+# src/app/routes_modules.py
+
 from datetime import date, datetime
 from typing import Optional
 
 from fastapi import APIRouter, Query, Response, HTTPException
 
 from app.deps import SessionDep
-from app.models import Event
-from app.repo import list_enabled_modules
+from app.models import Event, User, Entitlement
+from app.repo import list_enabled_modules, session_scope
 from app.schemas import DigestDayOut, EventOut, StrongAlertsOut
 from app.calendar_ics import build_calendar_ics_for_user_ref
+from common.plans import PlanFeature, is_feature_allowed_for_user
 
 # Роутер с префиксом /modules
 router = APIRouter(prefix="/modules", tags=["modules"])
@@ -54,8 +57,49 @@ def _calendar_ics_core(
 ) -> Response:
     """
     Обёртка над build_calendar_ics_for_user_ref: строим .ics для user_ref
-    (numeric id или tg_user_id).
+    (numeric id или tg_user_id) с учётом планов.
+
+    Важно:
+    - Если у пользователя НЕТ ни одного активного entitlement — ведём себя как раньше,
+      без гейтинга (для старых/тестовых пользователей).
+    - Если есть entitlements — проверяем, разрешена ли фича CALENDAR_ICS.
+      Если нет — 403.
     """
+
+    # --- Разрешаем/запрещаем календарь по плану, но только для пользователей с entitlements ---
+    with session_scope() as db:
+        # resolve user: numeric id или tg_user_id
+        if user_ref.isdigit():
+            user = db.get(User, int(user_ref))
+        else:
+            user = db.query(User).filter(User.tg_user_id == str(user_ref)).first()
+
+        # Если пользователя не нашли — пусть разрулит сам build_calendar_ics_for_user_ref
+        # (он, скорее всего, бросит ValueError, ниже мы это переведём в 404).
+        if user:
+            has_entitlement = (
+                db.query(Entitlement)
+                .filter(
+                    Entitlement.user_id == user.id,
+                    Entitlement.active.is_(True),
+                )
+                .first()
+                is not None
+            )
+
+            if has_entitlement:
+                # Для юзеров с entitlements — строгий гейтинг по фиче CALENDAR_ICS.
+                if not is_feature_allowed_for_user(
+                    db,
+                    user.id,
+                    PlanFeature.CALENDAR_ICS,
+                ):
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Calendar feature is not available for this plan.",
+                    )
+
+    # --- Если по плану всё ок — строим .ics как раньше ---
     try:
         body = build_calendar_ics_for_user_ref(
             user_ref=user_ref,
@@ -63,7 +107,7 @@ def _calendar_ics_core(
             tz=tz,
         )
     except ValueError as e:
-        # напр., если пользователь не найден
+        # типичный кейс — пользователь не найден / нет данных
         raise HTTPException(status_code=404, detail=str(e))
 
     return Response(content=body, media_type="text/calendar; charset=utf-8")

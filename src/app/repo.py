@@ -1,27 +1,27 @@
+# src/app/repo.py
+from __future__ import annotations
+
+import json
 from contextlib import contextmanager
 from datetime import datetime, date
-from typing import Optional, Union, Generator, List
-import json
+from typing import Any, Generator, Optional, Union, List
 
 from sqlalchemy import desc, text, select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import User, ModuleRegistry, EventFeedback
-
 from app import models
-
-# from app.services.timezone import tz_by_latlon
-from app.geo import tz_by_latlon
-
+from app.models import User, ModuleRegistry, EventFeedback
+from app.geo import tz_by_latlon, geocode_place_nominatim
 
 DEFAULT_LOCALE = "en"
+UserRef = Optional[Union[str, int]]
 
 
 def get_session() -> Generator[Session, None, None]:
     """
-    Генератор сессии для использования через `next(get_session())` или
-    в обёртке-контекст менеджере (например, в orchestrator.py).
+    Генератор сессии для FastAPI Depends:
+        db = next(get_session())
     """
     db: Session = SessionLocal()
     try:
@@ -33,24 +33,88 @@ def get_session() -> Generator[Session, None, None]:
 @contextmanager
 def session_scope() -> Generator[Session, None, None]:
     """
-    Удобный контекст-менеджер для внутренних задач:
+    Контекст менеджер с rollback при исключениях.
         with session_scope() as db:
             ...
     """
     db: Session = SessionLocal()
     try:
         yield db
+        # commit делаем в функциях-операциях точечно, чтобы не было неожиданных коммитов
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
 
 def _bump_users_seq(db: Session) -> None:
-    # выравниваем последовательность users_id_seq на MAX(id) (минимум 1)
-    db.execute(
-        text(
-            "SELECT setval('users_id_seq', (SELECT COALESCE(MAX(id), 1) FROM users), true)"
+    """
+    Выравниваем users_id_seq на MAX(id), если тесты/код создают пользователей с ручным id.
+    Безопасно: если sequence нет/не Postgres — просто игнорируем.
+    """
+    try:
+        db.execute(
+            text(
+                "SELECT setval('users_id_seq', (SELECT COALESCE(MAX(id), 1) FROM users), true)"
+            )
         )
-    )
+    except Exception:
+        pass
+
+
+def _get_or_create_user(db: Session, user_ref: UserRef) -> int:
+    """
+    Возвращает users.id. Создаёт пользователя, если нужно.
+
+    - user_ref=None -> системный пользователь id=1 (tg_user_id='system')
+    - число / строка-число -> считаем, что это id, создаём (tg_user_id=str(id))
+    - строка -> tg_user_id
+    """
+    # system user
+    if user_ref is None:
+        u = db.get(User, 1)
+        if not u:
+            u = User(id=1, tg_user_id="system", locale=DEFAULT_LOCALE)
+            db.add(u)
+            db.flush()
+            _bump_users_seq(db)
+        return 1
+
+    # numeric id
+    if isinstance(user_ref, int) or (isinstance(user_ref, str) and user_ref.isdigit()):
+        uid = int(user_ref)
+        u = db.get(User, uid)
+        if not u:
+            # важно: tg_user_id должен быть уникальным
+            u = User(id=uid, tg_user_id=str(uid), locale=DEFAULT_LOCALE)
+            db.add(u)
+            db.flush()
+            _bump_users_seq(db)
+        return uid
+
+    # alias tg_user_id
+    alias = str(user_ref)
+    u = db.query(User).filter(User.tg_user_id == alias).first()
+    if not u:
+        u = User(tg_user_id=alias, locale=DEFAULT_LOCALE)
+        db.add(u)
+        db.flush()
+        db.refresh(u)
+    return u.id
+
+
+def resolve_user_id(db: Session, user_ref: UserRef) -> int:
+    """
+    Унифицированное разрешение user_ref → users.id.
+    Оставляем для совместимости со всем проектом/тестами.
+    """
+    return _get_or_create_user(db, user_ref)
+
+
+# ---------------------------------------------------------------------------
+# Modules registry
+# ---------------------------------------------------------------------------
 
 
 def list_enabled_modules(db: Session) -> List[ModuleRegistry]:
@@ -60,6 +124,33 @@ def list_enabled_modules(db: Session) -> List[ModuleRegistry]:
         .order_by(ModuleRegistry.module)
         .all()
     )
+
+
+def ensure_default_modules(db: Session) -> None:
+    """
+    Идемпотентно гарантирует наличие базовых модулей.
+    """
+    defaults = [
+        ("daily_digest", True, {}),
+        ("strong_events_alerts", True, {}),
+    ]
+
+    for module_name, enabled, cfg in defaults:
+        exists = (
+            db.query(ModuleRegistry)
+            .filter(ModuleRegistry.module == module_name)
+            .first()
+        )
+        if not exists:
+            db.add(ModuleRegistry(module=module_name, enabled=enabled, config=cfg))
+
+    db.commit()
+    db.expire_all()
+
+
+# ---------------------------------------------------------------------------
+# Events / feedback logging
+# ---------------------------------------------------------------------------
 
 
 def recent_events(
@@ -87,60 +178,19 @@ def recent_events(
     return q.limit(limit).all()
 
 
-def _get_or_create_user(db: Session, user_ref: Optional[Union[str, int]]) -> int:
-    # system
-    if user_ref is None:
-        u = db.get(User, 1)
-        if not u:
-            u = User(id=1, tg_user_id="system", locale=DEFAULT_LOCALE)
-            db.add(u)
-            db.flush()
-            _bump_users_seq(db)
-        return 1
-
-    # numeric id
-    if isinstance(user_ref, int) or (isinstance(user_ref, str) and user_ref.isdigit()):
-        uid = int(user_ref)
-        u = db.get(User, uid)
-        if not u:
-            u = User(id=uid, tg_user_id=str(uid), locale=DEFAULT_LOCALE)
-            db.add(u)
-            db.flush()
-            _bump_users_seq(db)
-        return uid
-
-    # alias (tg_user_id), id авто-инкремент
-    alias = str(user_ref)
-    u = db.query(User).filter(User.tg_user_id == alias).first()
-    if not u:
-        u = User(tg_user_id=alias, locale=DEFAULT_LOCALE)
-        db.add(u)
-        db.flush()
-        db.refresh(u)
-    return u.id
-
-
-def resolve_user_id(
-    db: Session,
-    user_ref: Optional[Union[str, int]],
-) -> int:
-    """
-    Унифицированное разрешение user_ref → users.id.
-
-    - Если user_ref = None → системный пользователь (id=1), создаётся при необходимости.
-    - Если int или строка-число → считаем, что это числовой id, создаём при необходимости.
-    - Если строка не-число → считаем как tg_user_id, создаём пользователя, если его ещё нет.
-
-    Фактически это тонкая обёртка над _get_or_create_user, чтобы
-    старый контракт (resolve_user_id) продолжал работать.
-    """
-    return _get_or_create_user(db, user_ref)
+def list_recent_events(db: Session, limit: int = 20) -> List[EventFeedback]:
+    return (
+        db.query(EventFeedback)
+        .order_by(EventFeedback.created_at.desc())
+        .limit(limit)
+        .all()
+    )
 
 
 def log_event(
     db: Session,
     event: str,
-    user_id: Optional[Union[str, int]] = None,
+    user_id: UserRef = None,
     score: Optional[int] = None,
     payload: Optional[dict] = None,
 ) -> EventFeedback:
@@ -168,37 +218,9 @@ def log_event(
     return ev
 
 
-def list_recent_events(db: Session, limit: int = 20) -> List[EventFeedback]:
-    return (
-        db.query(EventFeedback)
-        .order_by(EventFeedback.created_at.desc())
-        .limit(limit)
-        .all()
-    )
-
-
-def ensure_default_modules(db: Session) -> None:
-    """
-    Идемпотентно гарантирует наличие базовых модулей.
-    Делается через ORM, чтобы изменения всегда были видны новым сессиям.
-    """
-    defaults = [
-        ("daily_digest", True, {}),
-        ("strong_events_alerts", True, {}),
-    ]
-
-    for module_name, enabled, cfg in defaults:
-        exists = (
-            db.query(ModuleRegistry)
-            .filter(ModuleRegistry.module == module_name)
-            .first()
-        )
-        if not exists:
-            db.add(ModuleRegistry(module=module_name, enabled=enabled, config=cfg))
-
-    db.commit()
-    # «протираем» кэш сессии (не обязательно, но полезно в тестах)
-    db.expire_all()
+# ---------------------------------------------------------------------------
+# Content atoms
+# ---------------------------------------------------------------------------
 
 
 def get_content_atom(
@@ -210,8 +232,6 @@ def get_content_atom(
     """
     Возвращает ContentAtom по topic_tag и локали с фолбеком на fallback_locale.
     """
-
-    # 1. пробуем локаль пользователя
     stmt = (
         select(models.ContentAtom)
         .where(
@@ -224,7 +244,6 @@ def get_content_atom(
     if atom is not None:
         return atom
 
-    # 2. фолбек, например на 'en'
     if fallback_locale and fallback_locale != locale:
         stmt_fallback = (
             select(models.ContentAtom)
@@ -258,7 +277,7 @@ def get_birth_data(db: Session, user_id: int) -> Optional[models.BirthData]:
 
 def upsert_birth_data(
     db: Session,
-    user_ref: Optional[Union[str, int]] = None,
+    user_ref: UserRef = None,
     birth_date: date | None = None,
     birth_time: Optional[str] = None,
     place: str | None = None,
@@ -271,32 +290,38 @@ def upsert_birth_data(
     """
     Создаёт или обновляет BirthData для пользователя.
 
-    Параметры:
-    - user_ref — numeric id или tg_user_id (как в log_event/recent_events),
-    - user_id  — явный users.id; если передан, он важнее user_ref,
-    - birth_date, birth_time, place, lat, lon, tz — данные рождения.
-
-    Логика:
-    - определяем user_id (через _get_or_create_user, если нужно);
-    - если tz не передан, но есть lat/lon — пробуем tz_by_latlon(lat, lon);
-    - обновляем (последнюю) запись BirthData пользователя или создаём новую;
-    - возвращаем актуальный объект BirthData.
+    Дополнения (п.3.2):
+    - если lat/lon не переданы, но place есть -> пробуем geocode_place_nominatim(place)
+      (сейчас в geo.py stub вернёт None — это нормально)
+    - если tz не передан, но есть lat/lon -> пробуем tz_by_latlon(lat, lon) (stub -> None)
     """
+    if birth_date is None:
+        raise ValueError("birth_date is required")
 
-    # 1. Определяем пользователя
+    # 1) Определяем пользователя
     if user_id is None:
         user_id = _get_or_create_user(db, user_ref)
 
-    # 2. Таймзона
-    effective_tz = tz
-    if effective_tz is None and lat is not None and lon is not None:
+    # 2) Геокодинг (если координат нет, но есть place)
+    effective_lat, effective_lon = lat, lon
+    if (effective_lat is None or effective_lon is None) and place:
         try:
-            effective_tz = tz_by_latlon(lat, lon)
+            gp = geocode_place_nominatim(place)
+            if gp:
+                effective_lat, effective_lon = gp.lat, gp.lon
         except Exception:
-            # stub/ошибка внутри tz_by_latlon не должна ломать основной поток
-            effective_tz = None
+            # никаких падений из-за гео-слоя
+            pass
 
-    # 3. Ищем последнюю запись BirthData для пользователя
+    # 3) Таймзона по координатам
+    effective_tz = tz
+    if effective_tz is None and effective_lat is not None and effective_lon is not None:
+        try:
+            effective_tz = tz_by_latlon(float(effective_lat), float(effective_lon))
+        except Exception:
+            pass
+
+    # 4) Ищем последнюю запись BirthData
     bd = (
         db.query(models.BirthData)
         .filter(models.BirthData.user_id == user_id)
@@ -304,7 +329,7 @@ def upsert_birth_data(
         .first()
     )
 
-    # 4. Создаём или обновляем запись
+    # 5) Создаём или обновляем
     if bd is None:
         bd = models.BirthData(
             user_id=user_id,
@@ -312,8 +337,8 @@ def upsert_birth_data(
             birth_time=birth_time,
             tz=effective_tz,
             place=place,
-            lat=lat,
-            lon=lon,
+            lat=effective_lat,
+            lon=effective_lon,
         )
         db.add(bd)
     else:
@@ -321,8 +346,8 @@ def upsert_birth_data(
         bd.birth_time = birth_time
         bd.tz = effective_tz
         bd.place = place
-        bd.lat = lat
-        bd.lon = lon
+        bd.lat = effective_lat
+        bd.lon = effective_lon
 
     db.commit()
     db.refresh(bd)
@@ -330,15 +355,16 @@ def upsert_birth_data(
 
 
 __all__ = [
+    "DEFAULT_LOCALE",
     "get_session",
     "session_scope",
+    "resolve_user_id",
     "list_enabled_modules",
-    "recent_events",
-    "log_event",
-    "list_recent_events",
     "ensure_default_modules",
     "get_content_atom",
+    "recent_events",
+    "list_recent_events",
+    "log_event",
     "get_birth_data",
     "upsert_birth_data",
-    "resolve_user_id",
 ]

@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 from app import models
 from app.models import TransitEvent
 from app.repo import resolve_user_id, get_birth_data
-from app.astro import skyfield_client  # <-- важно: импортируем модуль, не функцию
+from app.astro import skyfield_client
 
 
 def _day_bounds_utc(day: date) -> tuple[datetime, datetime]:
@@ -52,6 +52,7 @@ def compute_daily_transits(
     db: Session,
     user_id: int,
     day: Optional[date] = None,
+    bucket: str = "digest",
 ) -> List[TransitEvent]:
     """
     Stub-реализация расчёта транзитов на день.
@@ -99,6 +100,7 @@ def ensure_daily_transits(
     db: Session,
     user_ref,
     day: Optional[date] = None,
+    bucket: str = "digest",  # 👈 новый параметр с дефолтом
 ) -> List[TransitEvent]:
     """
     Высокоуровневый helper.
@@ -106,11 +108,21 @@ def ensure_daily_transits(
     - преобразует user_ref -> numeric user_id через resolve_user_id;
     - делегирует основную работу в compute_daily_transits.
 
+    bucket:
+      - "digest" — транзиты для дневного дайджеста,
+      - "strong" — транзиты для сильных алертов (strong_events_alerts),
+      - можно расширять дальше.
+
     Таким образом, вся остальная логика (дайджест, .ics и т.п.)
     ходит в единый сервис расчёта транзитов.
     """
     user_id = resolve_user_id(db, user_ref)
-    return compute_daily_transits(db, user_id=user_id, day=day)
+    return compute_daily_transits(
+        db,
+        user_id=user_id,
+        day=day,
+        bucket=bucket,  # 👈 прокидываем дальше
+    )
 
 
 # ================== Натальная карта + кэш ==================

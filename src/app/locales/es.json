@@ -1,0 +1,107 @@
+{
+  "tg": {
+    "age_gate": {
+      "question": "¡Hola! Soy el bot *AstroDaily* 🌌\n\nAntes de empezar, necesito confirmar que tienes *18+* y que entiendes que esto *no es un servicio médico, financiero ni legal* y se ofrece *solo con fines de entretenimiento y auto-reflexión*.\n\n¿Confirmas que tienes 18+ y estás de acuerdo?",
+      "yes_btn": "✅ Sí, tengo 18+",
+      "no_btn": "❌ No",
+      "accepted": "¡Gracias! ✅\n\nVamos a configurar tu perfil.\nEnvía tu fecha de nacimiento en formato *DD.MM.YYYY*.",
+      "declined": "Entendido. AstroDaily está disponible solo para usuarios 18+.\nSi fue un error, puedes enviar /start más tarde."
+    },
+    "start": {
+      "ask_birth_date": "Vamos a configurar tu perfil.\nEnvía tu fecha de nacimiento en formato *DD.MM.YYYY*.",
+      "welcome": "¡Hola! Soy tu bot *{bot_name}*.\n\nTe enviaré un breve resumen diario basado en tus datos de nacimiento y eventos del cielo.\n\nUsa /today para tu resumen de hoy.\nUsa /snooze para pausar/reanudar la entrega diaria."
+    },
+    "help": {
+      "basic": "Por ahora entiendo /start, /today y /snooze 🙂"
+    },
+    "onboarding": {
+      "birth_date_invalid": "Envía tu fecha de nacimiento en formato *DD.MM.YYYY*, por ejemplo *12.10.1980*.",
+      "birth_time_prompt": "Perfecto ✅\n\nAhora envía tu hora de nacimiento en formato *HH:MM* (24h), o escribe *No sé* si no estás seguro/a.",
+      "birth_time_invalid": "Envía tu hora de nacimiento en formato *HH:MM* (por ejemplo *07:30*), o escribe *No sé*.",
+      "birth_place_prompt": "¡Gracias! 🙌\nAhora escribe tu *lugar de nacimiento* — ciudad y país, por ejemplo: *\"Kyiv, Ukraine\"*.",
+      "birth_place_empty": "Indica tu lugar de nacimiento, por ejemplo *\"Kyiv, Ukraine\"*.",
+      "complete": "Genial, tus datos de nacimiento se guardaron ✅\n\nAhora puedes usar /today para tu resumen de hoy, o /snooze para pausar notificaciones."
+    },
+    "today": {
+      "failed": "No pude generar tu resumen de hoy. Inténtalo más tarde.",
+      "affirmation_label": "Afirmación:"
+    },
+    "snooze": {
+      "paused": "⏸ La entrega diaria está *en pausa*.\nEnvía /snooze otra vez para reanudar.",
+      "resumed": "▶️ La entrega diaria está *activa*.\nVolverás a recibir los resúmenes."
+    },
+    "feedback": {
+      "like_btn": "👍 Me gusta",
+      "dislike_btn": "👎 No es para mí",
+      "hide_btn": "🙈 Ocultar tema",
+      "like_ack": "¡Listo 👍 Gracias por tu feedback!",
+      "dislike_ack": "Entendido 👎 Intentaré ajustar los próximos resúmenes.",
+      "hide_ack": "Ok 🙈 Intentaré mostrar menos de este tema.",
+      "generic_ack": "¡Gracias por tu feedback!"
+    },
+    "upgrade": {
+      "summary": "Los planes de pago todavía se están configurando.\n\nMuy pronto podrás hacer el upgrade mediante Stripe directamente en el chat.\n\nPor ahora, si quieres probar los planes de pago, solo escribe al soporte y dinos qué plan te interesa:\n• Daily Focus — resumen diario ampliado (≈ 0,99 $/mes)\n• Full — resumen + alertas fuertes + calendario (≈ 4,99 $/mes).\n\nDespués del pago activaremos el plan manualmente y te avisaremos por Telegram.",
+      "already_full": "Ya estás en el plan completo. Si echas en falta algo en el bot, escribe al soporte y estaremos encantados de hacerlo realidad."
+    },
+    "rate_limit": "Demasiadas solicitudes. Inténtalo de nuevo en {seconds}s.",
+    "plan": {
+      "current": "Tu plan actual: *{plan_name}*",
+      "features": "Tienes:\n{features}",
+      "upgrade_hint": "Para desbloquear más funciones, usa /upgrade.",
+      "name": {
+        "demo": "Demo",
+        "daily": "Daily Focus",
+        "full": "Full",
+        "internal": "Internal"
+      },
+      "feature": {
+        "digest": "Resumen diario (/today)",
+        "alerts": "Alertas fuertes",
+        "calendar": "Calendario (.ics)",
+        "quiet_mode": "Modo de día tranquilo / control de envíos",
+        "unknown": "Función"
+      }
+    }
+  },
+  "atoms": {
+    "day": {
+      "general_balance": {
+        "body": "Hoy el cielo se ve bastante calmado. Es un buen momento para seguir tus rutinas sin prisa, prestando atención a los pequeños detalles y a tu propio ritmo.",
+        "copy_short": "Día adecuado para poner en orden lo básico: descanso, comida, cuerpo, tareas simples, conversaciones claras. Los pasos pequeños y sinceros valen más que las grandes promesas.",
+        "copy_long": "Astrológicamente el día no exige giros dramáticos, y eso te permite reajustar con suavidad las áreas que se han desequilibrado. Vuelve a las bases: hábitos, logística, dinero, comunicación simple. Si las emociones suben, dales espacio, pero no les entregues todo el volante.",
+        "cta": "Elige una acción pequeña y realista que haga tu semana más fácil y hazla con plena atención."
+      },
+      "general_selfcare": {
+        "body": "La energía del día va más hacia el descanso y la recuperación que hacia la prisa. Tu cuerpo y tu mente agradecerán un ritmo un poco más suave.",
+        "copy_short": "Baja una marcha. Suelta al menos una obligación extra y date permiso para descansar sin culpa.",
+        "copy_long": "Hoy es buen momento para reducir el ruido extra: reuniones innecesarias, scroll infinito, exigencia excesiva contigo mismo. Pausas cortas, una ducha caliente o un paseo tranquilo pueden darte más recursos que otra hora de trabajo forzado.",
+        "cta": "Reserva un momento concreto para cuidarte — aunque sean 10–15 minutos — y respétalo como si fuera una cita importante."
+      },
+      "work_focus": {
+        "body": "El día apoya el trabajo estructurado. Aunque la motivación suba y baje, puedes avanzar si divides las tareas en pasos claros y manejables.",
+        "copy_short": "Elige una tarea clave y protégela en tu agenda. Es mejor cerrar bien un pendiente que dispersarse en diez cosas a la vez.",
+        "copy_long": "Astrológicamente el clima favorece el progreso real más que la hiperactividad. Ayuda mucho enfocarse en lo que sí está bajo tu control: acuerdos claros, prioridades realistas, terminar lo que ya empezaste. Si notas tensión, haz una pequeña pausa, muévete un poco, respira y luego vuelve a lo más importante del día.",
+        "cta": "Escribe la tarea más importante de hoy y da al menos un paso concreto para avanzar con ella."
+      },
+      "money_focus": {
+        "body": "Hoy conviene mirar tus finanzas con más claridad que miedo. Ver los números reales puede bajar la ansiedad si lo haces con honestidad.",
+        "copy_short": "Revisa tus números: ingresos, gastos, pequeñas fugas. Una imagen clara calma más que evitar el tema.",
+        "copy_long": "El día es bueno para pequeños pero importantes movimientos en el área económica: revisar el presupuesto, cancelar una suscripción inútil, comprobar facturas o enviar una factura pendiente. Intenta no dramatizar las variaciones temporales y piensa más en decisiones y hábitos que te den estabilidad a largo plazo.",
+        "cta": "Elige una acción concreta con el dinero (cancelar un pago, mover una pequeña cantidad al ahorro, cerrar una factura pendiente) y hazla hoy."
+      },
+      "love_vibes": {
+        "body": "Las relaciones y vínculos pueden sentirse hoy más presentes — tanto lo agradable como lo sensible. Es un buen momento para conversaciones suaves pero sinceras.",
+        "copy_short": "Añade un poco de calidez al día: un mensaje corto, un agradecimiento sincero o un pequeño gesto de atención.",
+        "copy_long": "Puedes ver con más claridad qué te nutre en las relaciones y qué te agota. En lugar de caer en reproches o culpas, prueba mirarlo con curiosidad: ¿qué tipo de contacto te hace sentir visto y seguro?\n\nHoy es buen día para decir algo amable en voz alta, escuchar sin prisa por dar consejos o nombrar tus necesidades sin acusaciones.",
+        "cta": "Acércate a una persona importante para ti con un mensaje breve y honesto o con un gesto sencillo de cuidado."
+      },
+      "selfcare_nervous_system": {
+        "body": "Tu sistema nervioso puede estar pidiendo un ritmo más amable. Incluso un día ocupado puede ser más llevadero si introduces algunas pausas conscientes.",
+        "copy_short": "Dale al cuerpo una señal clara de seguridad: respiración lenta, bebida caliente, un estiramiento o un paseo corto sin móvil.",
+        "copy_long": "El estrés de fondo puede parecer algo normal, pero tu cuerpo sigue reaccionando a los gestos pequeños de cuidado. No tienes que cambiar toda tu vida en un día; empieza por detalles: comer sin pantallas, acostarte un poco antes, decir que no a una presión extra.\n\nLa meta hoy no es la perfección, sino un poco más de amabilidad hacia tus propios recursos.",
+        "cta": "Elige un pequeño ritual que calme tu sistema nervioso e inclúyelo de forma consciente en la agenda de hoy."
+      }
+    }
+  }
+
+}

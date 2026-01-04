@@ -1,3 +1,5 @@
+# src/app/seed_modules.py
+
 from app.db import SessionLocal
 from app.models import ModuleRegistry
 

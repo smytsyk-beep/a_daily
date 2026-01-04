@@ -1,149 +1,80 @@
-# src/app/routes_birth_data.py
-
 from __future__ import annotations
 
 from datetime import date
-from typing import Optional
+from typing import Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, field_validator
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
-from app import models
-from app.db import get_db
+from app.repo import session_scope, resolve_user_id, upsert_birth_data, get_birth_data
 
-router = APIRouter(
-    prefix="/users",
-    tags=["birth_data"],
-)
+router = APIRouter(prefix="/birth", tags=["birth"])
 
 
 class BirthDataIn(BaseModel):
-    """
-    Входная модель для сохранения данных рождения.
-    """
-
+    user_id: Optional[Union[int, str]] = Field(
+        default=None, description="users.id или tg_user_id"
+    )
     birth_date: date
-    birth_time: Optional[str] = None  # "HH:MM" или None
-    tz: Optional[str] = None
+    birth_time: Optional[str] = Field(default=None, description="HH:MM")
+    tz: Optional[str] = Field(default=None, description="IANA tz, e.g. Europe/Kyiv")
     place: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
 
-    @field_validator("birth_time")
-    @classmethod
-    def validate_birth_time(cls, v: Optional[str]) -> Optional[str]:
-        """Нормализуем и валидируем время в формате HH:MM."""
-        if v is None or v == "":
+
+class BirthDataOut(BaseModel):
+    user_id: int
+    birth_date: date
+    birth_time: Optional[str]
+    tz: Optional[str]
+    place: Optional[str]
+    lat: Optional[float]
+    lon: Optional[float]
+
+
+@router.get("/{user_ref}", response_model=Optional[BirthDataOut])
+def get_birth(user_ref: str):
+    with session_scope() as db:
+        uid = resolve_user_id(db, user_ref)
+        bd = get_birth_data(db, uid)
+        if not bd:
             return None
 
-        v = v.strip()
-        parts = v.split(":")
-        if len(parts) != 2:
-            raise ValueError("birth_time must be in HH:MM format")
-
-        hh_str, mm_str = parts
-        if not (hh_str.isdigit() and mm_str.isdigit()):
-            raise ValueError("birth_time must be in HH:MM format")
-
-        hh = int(hh_str)
-        mm = int(mm_str)
-        if not (0 <= hh <= 23 and 0 <= mm <= 59):
-            raise ValueError("birth_time must be in HH:MM format")
-
-        return f"{hh:02d}:{mm:02d}"
-
-
-class BirthDataOut(BirthDataIn):
-    """
-    Выходная модель (то же самое, плюс id записи).
-    """
-
-    id: int
-
-
-@router.get("/{user_id}/birth-data", response_model=BirthDataOut)
-def get_birth_data(
-    user_id: int,
-    db: Session = Depends(get_db),
-) -> BirthDataOut:
-    """
-    Возвращает последнюю запись BirthData для пользователя.
-
-    Если данных нет — 404.
-    """
-    bd = (
-        db.query(models.BirthData)
-        .filter(models.BirthData.user_id == user_id)
-        .order_by(models.BirthData.id.desc())
-        .first()
-    )
-
-    if not bd:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Birth data not found",
+        return BirthDataOut(
+            user_id=bd.user_id,
+            birth_date=bd.birth_date,
+            birth_time=bd.birth_time,
+            tz=bd.tz,
+            place=bd.place,
+            lat=bd.lat,
+            lon=bd.lon,
         )
 
-    return BirthDataOut(
-        id=bd.id,
-        birth_date=bd.birth_date,
-        birth_time=bd.birth_time,
-        tz=bd.tz,
-        place=bd.place,
-        lat=bd.lat,
-        lon=bd.lon,
-    )
 
+@router.post("/upsert", response_model=BirthDataOut)
+def upsert_birth(payload: BirthDataIn):
+    with session_scope() as db:
+        try:
+            bd = upsert_birth_data(
+                db=db,
+                user_ref=payload.user_id,
+                birth_date=payload.birth_date,
+                birth_time=payload.birth_time,
+                place=payload.place,
+                lat=payload.lat,
+                lon=payload.lon,
+                tz=payload.tz,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
-@router.put("/{user_id}/birth-data", response_model=BirthDataOut)
-def upsert_birth_data(
-    user_id: int,
-    payload: BirthDataIn,
-    db: Session = Depends(get_db),
-) -> BirthDataOut:
-    """
-    Создаёт или обновляет данные рождения для пользователя.
-
-    Логика простая:
-      - если запись есть — обновляем поля;
-      - если нет — создаём новую.
-    """
-    bd = (
-        db.query(models.BirthData)
-        .filter(models.BirthData.user_id == user_id)
-        .order_by(models.BirthData.id.desc())
-        .first()
-    )
-
-    if bd is None:
-        bd = models.BirthData(
-            user_id=user_id,
-            birth_date=payload.birth_date,
-            birth_time=payload.birth_time,
-            tz=payload.tz,
-            place=payload.place,
-            lat=payload.lat,
-            lon=payload.lon,
+        return BirthDataOut(
+            user_id=bd.user_id,
+            birth_date=bd.birth_date,
+            birth_time=bd.birth_time,
+            tz=bd.tz,
+            place=bd.place,
+            lat=bd.lat,
+            lon=bd.lon,
         )
-        db.add(bd)
-    else:
-        bd.birth_date = payload.birth_date
-        bd.birth_time = payload.birth_time
-        bd.tz = payload.tz
-        bd.place = payload.place
-        bd.lat = payload.lat
-        bd.lon = payload.lon
-
-    db.commit()
-    db.refresh(bd)
-
-    return BirthDataOut(
-        id=bd.id,
-        birth_date=bd.birth_date,
-        birth_time=bd.birth_time,
-        tz=bd.tz,
-        place=bd.place,
-        lat=bd.lat,
-        lon=bd.lon,
-    )
