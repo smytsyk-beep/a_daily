@@ -1,3 +1,5 @@
+# src/app/models.py
+
 from datetime import datetime, date
 from sqlalchemy import (
     Column,
@@ -15,6 +17,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import func
+
 import sqlalchemy as sa
 
 Base = declarative_base()
@@ -209,4 +213,22 @@ class UserFeatureFlag(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "feature_key", name="uq_user_feature_flag"),
+    )
+
+
+class GeocodeCache(Base):
+    __tablename__ = "geocode_cache"
+
+    id = Column(Integer, primary_key=True)
+    place_norm = Column(String(256), nullable=False, unique=True, index=True)
+    query_raw = Column(String(256), nullable=True)
+
+    lat = Column(Float, nullable=False)
+    lon = Column(Float, nullable=False)
+    display_name = Column(String(512), nullable=True)
+
+    provider = Column(String(32), nullable=False)  # "nominatim" | "google"
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False
     )

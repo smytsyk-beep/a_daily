@@ -8,6 +8,7 @@ from typing import List, Optional, Sequence, Tuple
 from sqlalchemy.orm import Session
 
 from app import models
+from app.repo import DEFAULT_LOCALE
 from app.astro_core import ensure_daily_transits
 from app.astro.global_events import compute_global_events, GlobalEvent
 
@@ -241,12 +242,16 @@ def _find_atoms_for_query(
     """
     Ищем кандидатов в content_atoms под AtomQuery.
 
-    Улучшения:
-    - trigger match делаем case-insensitive через lower()
-    - если по locale ничего нет — фолбек на 'en'
+    Правила:
+    - сначала пробуем locale из запроса (query.locale, нормализуем в lower),
+    - если ничего не нашли и locale != DEFAULT_LOCALE — пробуем DEFAULT_LOCALE,
+    - внутри каждой локали:
+        * если указан trigger — сначала ищем точное совпадение (case-insensitive),
+        * если нет точных совпадений — берём все атомы этой локали.
+    Возвращаем список (atom, sem_score), отсортированный по семантическому скору.
     """
 
-    def _run(locale: str) -> List[models.ContentAtom]:
+    def _run_for_locale(locale: str) -> List[models.ContentAtom]:
         q = db.query(models.ContentAtom).filter(models.ContentAtom.locale == locale)
 
         if query.trigger:
@@ -257,18 +262,125 @@ def _find_atoms_for_query(
 
         return q.all()
 
-    candidates = _run(query.locale)
-    if not candidates and query.locale != "en":
-        candidates = _run("en")
+    # Нормализуем locale и делаем fallback на DEFAULT_LOCALE
+    base_locale = (query.locale or DEFAULT_LOCALE).lower()
 
+    candidates = _run_for_locale(base_locale)
+
+    if not candidates and base_locale != DEFAULT_LOCALE:
+        candidates = _run_for_locale(DEFAULT_LOCALE)
+
+    # Семантический скор + сортировка
     scored: List[Tuple[models.ContentAtom, float]] = []
     for atom in candidates:
-        # для семантики нужно сохранить оригинальный query.locale (ок)
-        s = _semantic_score_atom_for_query(atom, query)
-        scored.append((atom, s))
+        sem_score = _semantic_score_atom_for_query(atom, query)
+        scored.append((atom, sem_score))
 
     scored.sort(key=lambda x: x[1], reverse=True)
     return scored[:max_atoms]
+
+
+def select_general_day_atoms(
+    db: Session,
+    user_profile: Optional[UserProfile],
+    *,
+    max_atoms: int = 2,
+) -> List[SelectedAtom]:
+    """
+    Подбирает «общие» атомы дня (day_*) на случай тихого дня.
+
+    Логика:
+    - базово используем два универсальных тега:
+        * day_general_balance
+        * day_general_selfcare
+    - если у пользователя есть интересы (profile.interests),
+      то добавляем к ним более тематические теги:
+        * work/career/job      → day_work_focus
+        * money/finance        → day_money_focus
+        * love/relations       → day_love_vibes
+        * selfcare/health      → day_selfcare_nervous_system
+      и даём им приоритет в выдаче;
+    - если по локали ничего не нашли и locale != DEFAULT_LOCALE —
+      пробуем DEFAULT_LOCALE;
+    - возвращаем до max_atoms SelectedAtom без привязки к конкретному транзиту.
+    """
+    # Базовая локаль
+    locale = (getattr(user_profile, "locale", None) or DEFAULT_LOCALE).lower()
+
+    # База: два универсальных тега
+    base_topic_tags = ["day_general_balance", "day_general_selfcare"]
+
+    # Персонализированные теги по интересам пользователя
+    topic_tags: List[str] = []
+    interests: List[str] = []
+    if user_profile and getattr(user_profile, "interests", None):
+        interests = [
+            str(x).strip().lower()
+            for x in (user_profile.interests or [])
+            if str(x).strip()
+        ]
+
+    interest_to_topic = {
+        "work": "day_work_focus",
+        "career": "day_work_focus",
+        "job": "day_work_focus",
+        "money": "day_money_focus",
+        "finance": "day_money_focus",
+        "finances": "day_money_focus",
+        "love": "day_love_vibes",
+        "relationship": "day_love_vibes",
+        "relationships": "day_love_vibes",
+        "selfcare": "day_selfcare_nervous_system",
+        "health": "day_selfcare_nervous_system",
+    }
+
+    seen_topics: set[str] = set()
+    # сначала — персонализированные теги
+    for interest in interests:
+        topic = interest_to_topic.get(interest)
+        if topic and topic not in seen_topics:
+            topic_tags.append(topic)
+            seen_topics.add(topic)
+
+    # затем — базовые теги (если их ещё нет)
+    for t in base_topic_tags:
+        if t not in seen_topics:
+            topic_tags.append(t)
+            seen_topics.add(t)
+
+    def _run_for_locale(loc: str) -> List[models.ContentAtom]:
+        q = db.query(models.ContentAtom).filter(
+            models.ContentAtom.locale == loc,
+            models.ContentAtom.topic_tag.in_(topic_tags),
+        )
+
+        # Упорядочиваем по приоритету topic_tags, затем по id
+        when_clauses = [
+            (models.ContentAtom.topic_tag == tag, idx)
+            for idx, tag in enumerate(topic_tags)
+        ]
+        order_expr = sa.case(*when_clauses, else_=len(topic_tags))
+
+        q = q.order_by(order_expr, models.ContentAtom.id.asc())
+        return q.limit(max_atoms).all()
+
+    atoms = _run_for_locale(locale)
+    if not atoms and locale != DEFAULT_LOCALE:
+        atoms = _run_for_locale(DEFAULT_LOCALE)
+
+    result: List[SelectedAtom] = []
+    for atom in atoms:
+        result.append(
+            SelectedAtom(
+                atom=atom,
+                # «Тихий» скор — используется только когда других атомов нет
+                score=0.4,
+                transit=None,
+                global_event=None,
+                event=None,
+            )
+        )
+    return result
 
 
 # ================== Главный RAG-сервис ==================

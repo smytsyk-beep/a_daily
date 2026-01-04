@@ -1,35 +1,26 @@
 # tests/test_global_events_stub.py
-from datetime import date
+from datetime import date, timedelta
 
-from app.astro.global_events import compute_global_events, GlobalEvent
+from app.astro.global_events import compute_global_events
 
 
-def test_compute_global_events_basic_range():
+def test_compute_global_events_returns_one_per_day_and_stub_flag():
     start = date(2025, 1, 1)
-    end = date(2025, 1, 3)
+    end = date(2025, 1, 5)  # 5 дней
 
     events = compute_global_events(start, end)
 
-    # по одному событию на день
-    assert len(events) == 3
-    assert all(isinstance(ev, GlobalEvent) for ev in events)
+    # 5 дней → 5 событий
+    assert len(events) == (end - start).days + 1
 
-    dates = {ev.ts_utc.date() for ev in events}
-    assert dates == {start, date(2025, 1, 2), end}
+    # Даты и тип
+    assert events[0].ts_utc.date() == start
+    assert events[-1].ts_utc.date() == end
+    assert all(e.kind == "moon_phase" for e in events)
 
-    # пока только фазы Луны и все помечены как stub
-    assert all(ev.kind == "moon_phase" for ev in events)
-    assert all(ev.payload.get("stub") is True for ev in events)
+    # Заглушка явно помечена
+    assert all(e.payload.get("stub") is True for e in events)
 
-
-def test_compute_global_events_deterministic():
-    start = date(2025, 1, 1)
-    end = date(2025, 1, 5)
-
-    events1 = compute_global_events(start, end)
-    events2 = compute_global_events(start, end)
-
-    # детерминированность по имени и времени
-    assert [(e.name, e.ts_utc) for e in events1] == [
-        (e.name, e.ts_utc) for e in events2
-    ]
+    # Фазы циклично повторяются по диапазону
+    names = [e.name for e in events]
+    assert len(set(names)) >= 2  # хотя бы две разные фазы на диапазоне

@@ -47,6 +47,16 @@ class Settings(BaseSettings):
         extra="forbid",
     )
 
+    # --- Geocoding / timezone ---
+    GEOCODER_MODE: str = "stub"  # "stub" | "chain" | "nominatim" | "google"
+    GEOCODER_CACHE_TTL_DAYS: int = 3650  # ~10 лет, т.к. города не меняются часто
+
+    NOMINATIM_BASE_URL: str = "http://nominatim:8080"
+    NOMINATIM_TIMEOUT_S: int = 5
+
+    GOOGLE_GEOCODING_API_KEY: str | None = None
+    GOOGLE_GEOCODING_TIMEOUT_S: int = 5
+
     @property
     def DATABASE_URL(self) -> str:
         """

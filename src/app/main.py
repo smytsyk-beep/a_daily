@@ -15,6 +15,7 @@ from app.routes_telegram import router as telegram_router
 from app.routes_user_prefs import router as user_prefs_router
 from app.routes_birth_data import router as birth_data_router
 from app.routes_user_summary import router as user_summary_router
+from app.routes_metrics import router as metrics_router
 
 from common.config import settings
 from common.error_handling import setup_exception_handlers
@@ -43,3 +44,4 @@ app.include_router(telegram_router)
 app.include_router(user_prefs_router)
 app.include_router(birth_data_router)
 app.include_router(user_summary_router)
+app.include_router(metrics_router)
