@@ -1,4 +1,5 @@
 # src/app/routes_telegram.py
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -98,23 +99,52 @@ def _get_or_create_user_by_tg_id(
     tg_user_id: int,
     username: Optional[str],
     language_code: Optional[str],
+    first_name: Optional[str] = None,
+    last_name: Optional[str] = None,
 ) -> models.User:
     tg_str = str(tg_user_id)
     normalized = normalize_locale(language_code)
 
+    def _build_display_name() -> Optional[str]:
+        parts: list[str] = []
+        if first_name:
+            parts.append(first_name)
+        if last_name:
+            parts.append(last_name)
+        display = " ".join(parts).strip()
+        if not display:
+            display = username or None
+        return display
+
     user = db.query(models.User).filter(models.User.tg_user_id == tg_str).first()
     if user:
         prefs = _safe_prefs_dict(user)
+        changed = False
+
+        # Автообновление locale, если юзер сам не фиксировал язык
         if not prefs.get("locale_manual"):
             if user.locale in (None, "", "en") and normalized != user.locale:
                 user.locale = normalized
-                db.commit()
-                db.refresh(user)
+                changed = True
+
+        # Обновляем display_name, если он пустой или технический user_<id>
+        current_name = getattr(user, "display_name", None)
+        candidate = _build_display_name()
+        if candidate and (not current_name or current_name == f"user_{user.id}"):
+            user.display_name = candidate
+            changed = True
+
+        if changed:
+            db.commit()
+            db.refresh(user)
+
         return user
 
+    # Новый пользователь
     user = models.User(
         tg_user_id=tg_str,
         locale=normalized,
+        display_name=_build_display_name(),
     )
     db.add(user)
     db.commit()
@@ -157,6 +187,7 @@ def _handle_onboarding_text_message(
         send_message(chat_id, tr(lang, "tg.help.basic"))
         return
 
+    # --- Шаг 1: дата рождения ---
     if state == STATE_ASK_BIRTH_DATE:
         try:
             bdate = datetime.strptime(text, "%d.%m.%Y").date()
@@ -173,10 +204,13 @@ def _handle_onboarding_text_message(
         _save_user_prefs(db, user, prefs)
 
         send_message(
-            chat_id, tr(lang, "tg.onboarding.birth_time_prompt"), parse_mode="Markdown"
+            chat_id,
+            tr(lang, "tg.onboarding.birth_time_prompt"),
+            parse_mode="Markdown",
         )
         return
 
+    # --- Шаг 2: время рождения ---
     if state == STATE_ASK_BIRTH_TIME:
         lowered = text.lower()
         if lowered in {
@@ -190,7 +224,6 @@ def _handle_onboarding_text_message(
             "no sé",
         }:
             hh, mm = 12, 0
-
         else:
             try:
                 t = datetime.strptime(text, "%H:%M").time()
@@ -208,12 +241,16 @@ def _handle_onboarding_text_message(
         _save_user_prefs(db, user, prefs)
 
         send_message(
-            chat_id, tr(lang, "tg.onboarding.birth_place_prompt"), parse_mode="Markdown"
+            chat_id,
+            tr(lang, "tg.onboarding.birth_place_prompt"),
+            parse_mode="Markdown",
         )
         return
 
+    # --- Шаг 3: место рождения + запись BirthData ---
     if state == STATE_ASK_BIRTH_PLACE:
         if not text:
+            print("[TG] Empty birth place")
             send_message(
                 chat_id,
                 tr(lang, "tg.onboarding.birth_place_empty"),
@@ -223,6 +260,7 @@ def _handle_onboarding_text_message(
 
         prefs["birth_place"] = text
         _save_user_prefs(db, user, prefs)
+        print(f"[TG] Birth place saved: {text!r}")
 
         birth_date_str = prefs.get("birth_date")
         birth_time_str = prefs.get("birth_time") or "12:00"
@@ -234,11 +272,17 @@ def _handle_onboarding_text_message(
                 else None
             )
         except Exception:
-
+            print(
+                "[TG] Failed to parse birth_date from prefs, skipping BirthData insert"
+            )
             bdate = None
 
         if bdate:
-
+            print(
+                f"[TG] Upserting BirthData for user_id={user.id}, "
+                f"date={bdate}, time={birth_time_str}, place={text!r}"
+            )
+            # ВАЖНО: используем внутренний PK пользователя, а не tg_user_id.
             repo.upsert_birth_data(
                 db,
                 user_ref=str(user.id),
@@ -249,17 +293,161 @@ def _handle_onboarding_text_message(
                 lon=None,
                 tz=None,
             )
+
+            # После сохранения BirthData пробуем резолвить lat/lon/tz
             ensure_birthdata_geo_for_user(db, user)
 
+        # После базовых данных переходим к предпочтениям по темам
+        prefs[ONBOARDING_STATE_KEY] = STATE_ASK_PREFS_TOPICS
+        _save_user_prefs(db, user, prefs)
+        print(
+            f"[TG] Birth data saved, asking prefs topics for user_id={user.id}, "
+            f"state={STATE_ASK_PREFS_TOPICS!r}"
+        )
+
+        send_message(
+            chat_id,
+            tr(lang, "tg.onboarding.prefs_topics_prompt"),
+            parse_mode="Markdown",
+        )
+        return
+
+    # --- Шаг 4: предпочтения по темам дайджеста ---
+    if state == STATE_ASK_PREFS_TOPICS:
+        # Ожидаем числа 1–4, можно через запятую или пробел
+        digits = {ch for ch in text if ch in "1234"}
+        if not digits:
+            print(f"[TG] Invalid prefs topics input: {text!r}")
+            send_message(
+                chat_id,
+                tr(lang, "tg.onboarding.prefs_topics_invalid"),
+                parse_mode="Markdown",
+            )
+            return
+
+        mapping = {
+            "1": "work",
+            "2": "relationships",
+            "3": "money",
+            "4": "selfcare",
+        }
+        topics = sorted({mapping[d] for d in digits})
+        print(f"[TG] Parsed prefs topics for user_id={user.id}: {topics}")
+
+        prefs["digest_interests"] = topics
+        prefs[ONBOARDING_STATE_KEY] = STATE_ASK_PREFS_DELIVERY
+        _save_user_prefs(db, user, prefs)
+
+        send_message(
+            chat_id,
+            tr(lang, "tg.onboarding.prefs_delivery_prompt"),
+            parse_mode="Markdown",
+        )
+        return
+
+    # --- Шаг 5: длина дайджеста + запись колонок и display_name ---
+    if state == STATE_ASK_PREFS_DELIVERY:
+        normalized = text.lower().strip()
+
+        length_code: Optional[str] = None
+        if normalized.startswith("1"):
+            length_code = "short"
+        elif normalized.startswith("2"):
+            length_code = "medium"
+        elif normalized.startswith("3"):
+            length_code = "long"
+        elif "short" in normalized:
+            length_code = "short"
+        elif "medium" in normalized:
+            length_code = "medium"
+        elif "long" in normalized:
+            length_code = "long"
+
+        if not length_code:
+            print(f"[TG] Invalid prefs delivery input: {text!r}")
+            send_message(
+                chat_id,
+                tr(lang, "tg.onboarding.prefs_delivery_invalid"),
+                parse_mode="Markdown",
+            )
+            return
+
+        print(
+            f"[TG] Parsed digest_length_preference for user_id={user.id}: "
+            f"{length_code!r}"
+        )
+
+        # Сохраняем в prefs + помечаем онбординг как завершённый
+        prefs["digest_length_preference"] = length_code
         prefs[ONBOARDING_STATE_KEY] = STATE_COMPLETE
         _save_user_prefs(db, user, prefs)
 
-        send_message(chat_id, tr(lang, "tg.onboarding.complete"))
+        # Дублируем в отдельные колонки, если они есть на модели
+        interests = prefs.get("digest_interests")
+
+        if hasattr(user, "digest_length_preference"):
+            try:
+                user.digest_length_preference = length_code  # type: ignore[assignment]
+            except Exception as e:
+                print(f"[TG] Failed to set user.digest_length_preference: {e!r}")
+
+        if hasattr(user, "digest_interests") and interests is not None:
+            try:
+                user.digest_interests = interests  # type: ignore[assignment]
+            except Exception as e:
+                print(f"[TG] Failed to set user.digest_interests: {e!r}")
+
+        # Заполняем display_name, если он ещё пустой
+        if hasattr(user, "display_name"):
+            try:
+                if not user.display_name:
+                    name_parts: list[str] = []
+                    first_name = getattr(user, "first_name", None)
+                    last_name = getattr(user, "last_name", None)
+                    username = getattr(user, "username", None)
+
+                    if first_name:
+                        name_parts.append(first_name)
+                    if last_name:
+                        name_parts.append(last_name)
+
+                    if name_parts:
+                        user.display_name = " ".join(name_parts)  # type: ignore[assignment]
+                    elif username:
+                        user.display_name = username  # type: ignore[assignment]
+                    else:
+                        user.display_name = f"user_{user.id}"  # type: ignore[assignment]
+
+                    print(
+                        f"[TG] display_name set for user_id={user.id}: "
+                        f"{user.display_name!r}"
+                    )
+            except Exception as e:
+                print(f"[TG] Failed to set user.display_name: {e!r}")
+
+        # Фиксируем все изменения user в БД
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        print(f"[TG] Onboarding complete for user_id={user.id}")
+
+        send_message(
+            chat_id,
+            tr(lang, "tg.onboarding.complete"),
+            parse_mode="Markdown",
+        )
         return
 
+    # На всякий случай: неизвестное состояние → сбрасываем.
+    print(f"[TG] Unknown onboarding state inside handler: {state!r}, resetting")
     prefs.pop(ONBOARDING_STATE_KEY, None)
     _save_user_prefs(db, user, prefs)
-    send_message(chat_id, tr(lang, "tg.help.basic"))
+    send_message(
+        chat_id,
+        tr(lang, "tg.help.basic"),
+        parse_mode="Markdown",
+    )
 
 
 def _get_user_plan_for_db(db: Session, user: models.User) -> tuple[str, object]:
@@ -300,6 +488,8 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
     tg_user_id = from_user.get("id")
     username = from_user.get("username")
     language_code = from_user.get("language_code")
+    first_name = from_user.get("first_name")
+    last_name = from_user.get("last_name")
 
     if tg_user_id is None:
         raise HTTPException(
@@ -312,6 +502,8 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
             tg_user_id=tg_user_id,
             username=username,
             language_code=language_code,
+            first_name=first_name,
+            last_name=last_name,
         )
 
         onboarding_state = _get_onboarding_state(user)
@@ -322,6 +514,7 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
 
         if callback_data:
 
+            # 0. Age gate
             if callback_data == "age_yes":
                 now = datetime.utcnow()
                 user.age_gate_accepted_at = now
@@ -333,7 +526,7 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
 
                 send_message(
                     chat_id=chat_id,
-                    text=tr(lang, "tg.age_gate.accepted"),
+                    text=tr(user.locale or "en", "tg.age_gate.accepted"),
                     parse_mode="Markdown",
                 )
                 return {"status": "ok"}
@@ -342,17 +535,173 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
                 _set_onboarding_state(user, None)
                 db.commit()
 
-                send_message(chat_id=chat_id, text=tr(lang, "tg.age_gate.declined"))
+                send_message(
+                    chat_id=chat_id,
+                    text=tr(user.locale or "en", "tg.age_gate.declined"),
+                )
                 return {"status": "ok"}
 
+            lang_code = user.locale or "en"
+
+            # 1. Settings: язык
+            if callback_data == "settings_lang":
+                keyboard = {
+                    "inline_keyboard": [
+                        [
+                            {
+                                "text": tr(lang_code, "tg.settings.lang.en"),
+                                "callback_data": "settings_lang_en",
+                            },
+                            {
+                                "text": tr(lang_code, "tg.settings.lang.ru"),
+                                "callback_data": "settings_lang_ru",
+                            },
+                            {
+                                "text": tr(lang_code, "tg.settings.lang.es"),
+                                "callback_data": "settings_lang_es",
+                            },
+                        ]
+                    ]
+                }
+                send_message(
+                    chat_id=chat_id,
+                    text=tr(lang_code, "tg.settings.language.choose"),
+                    parse_mode="Markdown",
+                    reply_markup=keyboard,
+                )
+                return {"status": "ok"}
+
+            if callback_data.startswith("settings_lang_"):
+                new_lang = callback_data.split("settings_lang_", 1)[1]
+                if new_lang not in ("en", "ru", "es"):
+                    new_lang = "en"
+
+                prefs = _get_user_prefs(user)
+                prefs["locale_manual"] = True
+                user.locale = new_lang
+                _save_user_prefs(db, user, prefs)
+
+                lang_label = tr(new_lang, f"tg.settings.lang.{new_lang}")
+                msg = tr(new_lang, "tg.settings.language.changed", language=lang_label)
+                send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                return {"status": "ok"}
+
+            # 2. Settings: часовой пояс
+            if callback_data == "settings_tz":
+                tz_keyboard = {
+                    "inline_keyboard": [
+                        [
+                            {
+                                "text": "Europe/Kyiv",
+                                "callback_data": "settings_tz_Europe/Kyiv",
+                            },
+                            {
+                                "text": "Europe/Bucharest",
+                                "callback_data": "settings_tz_Europe/Bucharest",
+                            },
+                        ],
+                        [
+                            {
+                                "text": "Europe/Istanbul",
+                                "callback_data": "settings_tz_Europe/Istanbul",
+                            },
+                            {
+                                "text": "UTC",
+                                "callback_data": "settings_tz_UTC",
+                            },
+                        ],
+                    ]
+                }
+                send_message(
+                    chat_id=chat_id,
+                    text=tr(lang_code, "tg.settings.timezone.choose"),
+                    parse_mode="Markdown",
+                    reply_markup=tz_keyboard,
+                )
+                return {"status": "ok"}
+
+            if callback_data.startswith("settings_tz_"):
+                tz = callback_data.split("settings_tz_", 1)[1]
+
+                prefs = _get_user_prefs(user)
+                prefs["timezone"] = tz
+                user.timezone = tz
+                _save_user_prefs(db, user, prefs)
+
+                msg = tr(lang_code, "tg.settings.timezone.changed", timezone=tz)
+                send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                return {"status": "ok"}
+
+            # 3. Settings: время доставки
+            if callback_data == "settings_time":
+                time_keyboard = {
+                    "inline_keyboard": [
+                        [
+                            {
+                                "text": "07:00",
+                                "callback_data": "settings_time_07:00",
+                            },
+                            {
+                                "text": "09:00",
+                                "callback_data": "settings_time_09:00",
+                            },
+                        ],
+                        [
+                            {
+                                "text": "12:00",
+                                "callback_data": "settings_time_12:00",
+                            },
+                            {
+                                "text": "18:00",
+                                "callback_data": "settings_time_18:00",
+                            },
+                        ],
+                    ]
+                }
+                send_message(
+                    chat_id=chat_id,
+                    text=tr(lang_code, "tg.settings.delivery_time.choose"),
+                    parse_mode="Markdown",
+                    reply_markup=time_keyboard,
+                )
+                return {"status": "ok"}
+
+            if callback_data.startswith("settings_time_"):
+                time_str = callback_data.split("settings_time_", 1)[1]
+                try:
+                    t_obj = datetime.strptime(time_str, "%H:%M").time()
+                except ValueError:
+                    t_obj = None
+
+                prefs = _get_user_prefs(user)
+                prefs["delivery_time_local"] = time_str
+                if t_obj is not None:
+                    user.delivery_time_local = t_obj
+                else:
+                    # на всякий случай, если модель позволяет хранить строку
+                    user.delivery_time_local = time_str  # type: ignore[attr-defined]
+                _save_user_prefs(db, user, prefs)
+
+                msg = tr(
+                    lang_code,
+                    "tg.settings.delivery_time.changed",
+                    delivery_time=time_str,
+                )
+                send_message(chat_id=chat_id, text=msg, parse_mode="Markdown")
+                return {"status": "ok"}
+
+            # 4. Feedback по дайджесту
             if callback_data == "dd_like":
-                ack = tr(lang, "tg.feedback.like_ack")
+                ack = tr(lang_code, "tg.feedback.like_ack")
+
             elif callback_data == "dd_dislike":
-                ack = tr(lang, "tg.feedback.dislike_ack")
+                ack = tr(lang_code, "tg.feedback.dislike_ack")
+
             elif callback_data == "dd_hide":
-                ack = tr(lang, "tg.feedback.hide_ack")
+                ack = tr(lang_code, "tg.feedback.hide_ack")
+
             else:
-                ack = tr(lang, "tg.feedback.generic_ack")
+                ack = tr(lang_code, "tg.feedback.generic_ack")
 
             send_message(chat_id=chat_id, text=ack)
             return {"status": "ok"}
@@ -589,7 +938,97 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
             )
             return {"status": "ok"}
 
-        # ========== 6. Незавершённый онбординг ==========
+        # ========== 6. /settings ==========
+
+        if text.startswith("/settings"):
+            lang_code = user.locale or "en"
+
+            # Текущий план
+            plan_code, plan_cfg = _get_user_plan_for_db(db, user)
+            plan_name = tr(lang_code, plan_title_key(plan_code))
+
+            # Читаем язык (человеко-понятное имя)
+            lang_label = tr(lang_code, f"tg.settings.lang.{lang_code}")
+
+            # Часовой пояс
+            tz_value = getattr(user, "timezone", None)
+            if not tz_value:
+                timezone_label = tr(lang_code, "tg.settings.timezone.not_set")
+            else:
+                timezone_label = str(tz_value)
+
+            # Время дайджеста
+            dt_value = getattr(user, "delivery_time_local", None)
+            if dt_value:
+                if hasattr(dt_value, "strftime"):
+                    delivery_time_label = dt_value.strftime("%H:%M")
+                else:
+                    delivery_time_label = str(dt_value)
+            else:
+                delivery_time_label = tr(lang_code, "tg.settings.delivery_time.not_set")
+
+            # Статус доставки (snooze)
+            delivery_enabled = getattr(user, "delivery_enabled", True)
+            delivery_status_key = (
+                "tg.settings.delivery.enabled"
+                if delivery_enabled
+                else "tg.settings.delivery.disabled"
+            )
+            delivery_status = tr(lang_code, delivery_status_key)
+
+            msg = tr(
+                lang_code,
+                "tg.settings.summary",
+                language=lang_label,
+                plan_name=plan_name,
+                timezone=timezone_label,
+                delivery_time=delivery_time_label,
+                delivery_status=delivery_status,
+            )
+
+            keyboard = {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": tr(lang_code, "tg.settings.btn.language"),
+                            "callback_data": "settings_lang",
+                        },
+                        {
+                            "text": tr(lang_code, "tg.settings.btn.timezone"),
+                            "callback_data": "settings_tz",
+                        },
+                    ],
+                    [
+                        {
+                            "text": tr(lang_code, "tg.settings.btn.delivery_time"),
+                            "callback_data": "settings_time",
+                        }
+                    ],
+                ]
+            }
+
+            send_message(
+                chat_id=chat_id,
+                text=msg,
+                parse_mode="Markdown",
+                reply_markup=keyboard,
+            )
+            return {"status": "ok"}
+
+        # ========== 7. /help ==========
+
+        if text.startswith("/help"):
+            lang = user.locale or "en"
+
+            msg = tr(lang, "tg.help.full")
+            send_message(
+                chat_id=chat_id,
+                text=msg,
+                parse_mode="Markdown",
+            )
+            return {"status": "ok"}
+
+        # ========== 8. Незавершённый онбординг ==========
 
         if (
             onboarding_state
@@ -599,7 +1038,7 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
             _handle_onboarding_text_message(db, user, chat_id, text)
             return {"status": "ok"}
 
-        # ========== 7. Help по умолчанию ==========
+        # ========== 9. Help по умолчанию ==========
 
         send_message(chat_id=chat_id, text=tr(lang, "tg.help.basic"))
         return {"status": "ok"}
