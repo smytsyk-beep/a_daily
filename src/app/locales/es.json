@@ -1,53 +1,58 @@
 {
   "tg": {
     "age_gate": {
-      "question": "¡Hola! Soy el bot *AstroDaily* 🌌\n\nAntes de empezar, necesito confirmar que tienes *18+* y que entiendes que esto *no es un servicio médico, financiero ni legal* y se ofrece *solo con fines de entretenimiento y auto-reflexión*.\n\n¿Confirmas que tienes 18+ y estás de acuerdo?",
-      "yes_btn": "✅ Sí, tengo 18+",
+      "question": "Hi! I’m *AstroDaily* bot 🌌\n\nBefore we start, I need to confirm that you are *18+* and that you understand this is *not a medical, financial or legal service* and is provided *for entertainment purposes only*.\n\nDo you confirm that you are 18+ and agree with this?",
+      "yes_btn": "✅ Yes, I’m 18+",
       "no_btn": "❌ No",
-      "accepted": "¡Gracias! ✅\n\nVamos a configurar tu perfil.\nEnvía tu fecha de nacimiento en formato *DD.MM.YYYY*.",
-      "declined": "Entendido. AstroDaily está disponible solo para usuarios 18+.\nSi fue un error, puedes enviar /start más tarde."
+      "accepted": "Thank you! ✅\n\nLet’s set up your profile.\nPlease send your birth date in format *DD.MM.YYYY*.",
+      "declined": "Understood. AstroDaily is available only for users 18+.\nIf this was a mistake, you can send /start again later."
     },
     "start": {
-      "ask_birth_date": "Vamos a configurar tu perfil.\nEnvía tu fecha de nacimiento en formato *DD.MM.YYYY*.",
-      "welcome": "¡Hola! Soy tu bot *{bot_name}*.\n\nTe enviaré un breve resumen diario basado en tus datos de nacimiento y eventos del cielo.\n\nUsa /today para tu resumen de hoy.\nUsa /snooze para pausar/reanudar la entrega diaria."
+      "ask_birth_date": "Let’s set up your profile.\nPlease send your birth date in format *DD.MM.YYYY*.",
+      "welcome": "Hi! I’m your *{bot_name}* bot.\n\nI’ll compute your natal chart and today’s transits and send you a short AI-powered astro digest based on your birth data and current sky events.\n\nUse /today to get your digest for today.\nUse /snooze to pause/resume daily delivery.\nUse /help to see what I can do and all commands."
     },
     "help": {
-      "basic": "Por ahora entiendo /start, /today y /snooze 🙂"
+      "basic": "I understand /start, /today and /snooze for now 🙂",
+      "full": "I’m *AstroDaily* — a daily astrology digest powered by AI.\n\nWhat I can do:\n• compute your natal chart and transits based on birth date, time and place;\n• build a short forecast for today from the most important aspects;\n• gently highlight today’s themes: work, relationships, money, self-care;\n• show your plan (/plan) and which features are available.\n\nMain commands:\n• /start — start or restart onboarding;\n• /today — daily digest for today;\n• /snooze — pause / resume delivery;\n• /plan — see your current plan and features;\n• /upgrade — learn how to get more features;\n• /help — short help about the bot and commands.\n\n_Note: I don’t provide medical, financial or legal advice. This is an informational and entertainment service._"
     },
     "onboarding": {
-      "birth_date_invalid": "Envía tu fecha de nacimiento en formato *DD.MM.YYYY*, por ejemplo *12.10.1980*.",
-      "birth_time_prompt": "Perfecto ✅\n\nAhora envía tu hora de nacimiento en formato *HH:MM* (24h), o escribe *No sé* si no estás seguro/a.",
-      "birth_time_invalid": "Envía tu hora de nacimiento en formato *HH:MM* (por ejemplo *07:30*), o escribe *No sé*.",
-      "birth_place_prompt": "¡Gracias! 🙌\nAhora escribe tu *lugar de nacimiento* — ciudad y país, por ejemplo: *\"Kyiv, Ukraine\"*.",
-      "birth_place_empty": "Indica tu lugar de nacimiento, por ejemplo *\"Kyiv, Ukraine\"*.",
-      "complete": "Genial, tus datos de nacimiento se guardaron ✅\n\nAhora puedes usar /today para tu resumen de hoy, o /snooze para pausar notificaciones."
+      "birth_date_invalid": "Please send your birth date in format *DD.MM.YYYY*, for example *12.10.1980*.",
+      "birth_time_prompt": "Got it ✅\n\nNow send your birth time in format *HH:MM* (24h), or type *Don’t know* if you’re not sure.",
+      "birth_time_invalid": "Please send your birth time in format *HH:MM* (for example *07:30*), or type *Don’t know*.",
+      "birth_place_prompt": "Thanks! 🙌\nNow type your *place of birth* — city and country, for example: *\"Kyiv, Ukraine\"*.",
+      "birth_place_empty": "Please enter your place of birth, e.g. *\"Kyiv, Ukraine\"*.",
+      "prefs_topics_prompt": "Antes de empezar, cuéntame qué te interesa más ahora:\n1) Trabajo y proyectos\n2) Relaciones y personas\n3) Dinero y recursos\n4) Cuidado personal y energía\n\nEnvía los números separados por comas, por ejemplo: *1,3* o *2 4*.",
+      "prefs_topics_invalid": "No lo entendí del todo 🤔\nPor favor envía números del 1 al 4, por ejemplo: *1,3* o *2 4*.",
+      "prefs_delivery_prompt": "¿Qué longitud prefieres para tu resumen diario?\n1) Corto — 1–2 párrafos breves\n2) Medio — con algo más de detalle\n3) Extendido — más largo y profundo\n\nEnvía *1*, *2* o *3*.",
+      "prefs_delivery_invalid": "Elige *1*, *2* o *3* para que pueda ajustar la longitud de tu resumen.",
+      "complete": "Great, your birth data is saved ✅\n\nNow you can use /today to get your daily digest, or /snooze to pause notifications."
     },
     "today": {
-      "failed": "No pude generar tu resumen de hoy. Inténtalo más tarde.",
-      "affirmation_label": "Afirmación:"
+      "failed": "I couldn’t build your digest for today. Please try again later.",
+      "affirmation_label": "Affirmation:"
     },
     "snooze": {
-      "paused": "⏸ La entrega diaria está *en pausa*.\nEnvía /snooze otra vez para reanudar.",
-      "resumed": "▶️ La entrega diaria está *activa*.\nVolverás a recibir los resúmenes."
+      "paused": "⏸ Daily delivery *paused*.\nSend /snooze again to resume your digests.",
+      "resumed": "▶️ Daily delivery *resumed*.\nYou’ll start receiving digests again."
     },
     "feedback": {
-      "like_btn": "👍 Me gusta",
-      "dislike_btn": "👎 No es para mí",
-      "hide_btn": "🙈 Ocultar tema",
-      "like_ack": "¡Listo 👍 Gracias por tu feedback!",
-      "dislike_ack": "Entendido 👎 Intentaré ajustar los próximos resúmenes.",
-      "hide_ack": "Ok 🙈 Intentaré mostrar menos de este tema.",
-      "generic_ack": "¡Gracias por tu feedback!"
+      "like_btn": "👍 Like",
+      "dislike_btn": "👎 Not for me",
+      "hide_btn": "🙈 Hide topic",
+      "like_ack": "Got it 👍 Thanks for your feedback!",
+      "dislike_ack": "Got it 👎 I’ll try to adjust future digests.",
+      "hide_ack": "Okay 🙈 I’ll try to show less of this topic.",
+      "generic_ack": "Thanks for your feedback!"
     },
     "upgrade": {
-      "summary": "Los planes de pago todavía se están configurando.\n\nMuy pronto podrás hacer el upgrade mediante Stripe directamente en el chat.\n\nPor ahora, si quieres probar los planes de pago, solo escribe al soporte y dinos qué plan te interesa:\n• Daily Focus — resumen diario ampliado (≈ 0,99 $/mes)\n• Full — resumen + alertas fuertes + calendario (≈ 4,99 $/mes).\n\nDespués del pago activaremos el plan manualmente y te avisaremos por Telegram.",
-      "already_full": "Ya estás en el plan completo. Si echas en falta algo en el bot, escribe al soporte y estaremos encantados de hacerlo realidad."
+      "summary": "Paid plans are still being wired up.\n\nSoon you’ll be able to upgrade via Stripe right inside the chat.\n\nFor now, if you want to test paid plans, just message support and tell us which plan you’re interested in:\n• Daily Focus — extended daily digest (≈ $0.99/month)\n• Full — digest + strong alerts + calendar (≈ $4.99/month).\n\nAfter payment we will enable the plan manually and notify you in Telegram.",
+      "already_full": "You are already on the full plan. If you are missing something in the bot, message support and we’ll be happy to build it."
     },
-    "rate_limit": "Demasiadas solicitudes. Inténtalo de nuevo en {seconds}s.",
+    "rate_limit": "Too many requests. Try again in {seconds}s.",
     "plan": {
-      "current": "Tu plan actual: *{plan_name}*",
-      "features": "Tienes:\n{features}",
-      "upgrade_hint": "Para desbloquear más funciones, usa /upgrade.",
+      "current": "Your current plan: *{plan_name}*",
+      "features": "You get:\n{features}",
+      "upgrade_hint": "To unlock more features, use /upgrade.",
       "name": {
         "demo": "Demo",
         "daily": "Daily Focus",
@@ -55,53 +60,83 @@
         "internal": "Internal"
       },
       "feature": {
-        "digest": "Resumen diario (/today)",
-        "alerts": "Alertas fuertes",
-        "calendar": "Calendario (.ics)",
-        "quiet_mode": "Modo de día tranquilo / control de envíos",
-        "unknown": "Función"
+        "digest": "Daily digest (/today)",
+        "alerts": "Strong alerts",
+        "calendar": "Calendar (.ics)",
+        "quiet_mode": "Quiet day mode / delivery control",
+        "unknown": "Feature"
       }
+    },
+    "settings": {
+    "summary": "*Tus ajustes de perfil:*\n\n• Idioma: {language}\n• Plan: {plan_name}\n• Zona horaria: {timezone}\n• Hora del resumen diario: {delivery_time}\n• Entrega: {delivery_status}\n\nUsa los botones de abajo para cambiar estos ajustes.",
+    "lang": {
+    "en": "Inglés",
+    "ru": "Ruso",
+    "es": "Español"
+    },
+    "language": {
+    "choose": "Elige tu idioma:",
+    "changed": "Idioma actualizado a *{language}*."
+    },
+    "timezone": {
+    "not_set": "No definido",
+    "choose": "Elige tu zona horaria:",
+    "changed": "Zona horaria actualizada a *{timezone}*."
+    },
+    "delivery_time": {
+    "not_set": "No definida",
+    "choose": "Elige la hora de tu resumen diario:",
+    "changed": "Hora del resumen actualizada a *{delivery_time}*."
+    },
+    " delivery": {
+    "enabled": "Activada",
+    "disabled": "Desactivada"
+    },
+    "btn": {
+    "language": "Idioma",
+    "timezone": "Zona horaria",
+    "delivery_time": "Hora del resumen"
+    }
     }
   },
   "atoms": {
     "day": {
       "general_balance": {
-        "body": "Hoy el cielo se ve bastante calmado. Es un buen momento para seguir tus rutinas sin prisa, prestando atención a los pequeños detalles y a tu propio ritmo.",
-        "copy_short": "Día adecuado para poner en orden lo básico: descanso, comida, cuerpo, tareas simples, conversaciones claras. Los pasos pequeños y sinceros valen más que las grandes promesas.",
-        "copy_long": "Astrológicamente el día no exige giros dramáticos, y eso te permite reajustar con suavidad las áreas que se han desequilibrado. Vuelve a las bases: hábitos, logística, dinero, comunicación simple. Si las emociones suben, dales espacio, pero no les entregues todo el volante.",
-        "cta": "Elige una acción pequeña y realista que haga tu semana más fácil y hazla con plena atención."
+        "body": "Today the sky looks relatively calm. This is a good moment to move through your routines without pressure, paying attention to small details and your natural pace. Gentle corrections will work better than radical moves.",
+        "copy_short": "A calm day to rebalance your basics — sleep, food, body, inbox, simple conversations. Small honest steps count more than big promises.",
+        "copy_long": "Astrologically the day doesn't push for dramatic turns, which is a gift: you can quietly realign areas that slipped out of balance. Focus on foundations — rest, simple tasks, practical money questions, realistic planning. If emotions rise, give them space, but don't let them steer the whole story.",
+        "cta": "Pick one tiny, realistic action that will make the rest of the week easier, and do it mindfully."
       },
       "general_selfcare": {
-        "body": "La energía del día va más hacia el descanso y la recuperación que hacia la prisa. Tu cuerpo y tu mente agradecerán un ritmo un poco más suave.",
-        "copy_short": "Baja una marcha. Suelta al menos una obligación extra y date permiso para descansar sin culpa.",
-        "copy_long": "Hoy es buen momento para reducir el ruido extra: reuniones innecesarias, scroll infinito, exigencia excesiva contigo mismo. Pausas cortas, una ducha caliente o un paseo tranquilo pueden darte más recursos que otra hora de trabajo forzado.",
-        "cta": "Reserva un momento concreto para cuidarte — aunque sean 10–15 minutos — y respétalo como si fuera una cita importante."
+        "body": "The overall tone of the day is more about recovery than rush. Your system will respond well to softer pacing and honest rest.",
+        "copy_short": "Slow the tempo a little. Clear one small obligation, then give yourself permission to exhale and recharge.",
+        "copy_long": "Energy is better suited for restoration than for heroic breakthroughs. Lower the internal volume of 'must do everything right now'. Short pauses, walks, stretching, journaling or quiet time without screens can help your nervous system reset and make later decisions clearer.",
+        "cta": "Schedule at least one concrete self-care pause today — even 10–15 minutes — and treat it as a real appointment."
       },
       "work_focus": {
-        "body": "El día apoya el trabajo estructurado. Aunque la motivación suba y baje, puedes avanzar si divides las tareas en pasos claros y manejables.",
-        "copy_short": "Elige una tarea clave y protégela en tu agenda. Es mejor cerrar bien un pendiente que dispersarse en diez cosas a la vez.",
-        "copy_long": "Astrológicamente el clima favorece el progreso real más que la hiperactividad. Ayuda mucho enfocarse en lo que sí está bajo tu control: acuerdos claros, prioridades realistas, terminar lo que ya empezaste. Si notas tensión, haz una pequeña pausa, muévete un poco, respira y luego vuelve a lo más importante del día.",
-        "cta": "Escribe la tarea más importante de hoy y da al menos un paso concreto para avanzar con ella."
+        "body": "Today is good for structured effort. Even if motivation comes in waves, you can make solid progress by breaking tasks into small, concrete steps.",
+        "copy_short": "Choose one key task and protect time for it. Close at least one loop at work instead of trying to multitask everything at once.",
+        "copy_long": "The day supports practical, grounded actions in your work or projects. You don't need a heroic breakthrough — consistent, realistic effort will bring more result than chaotic activity. Focus on what is truly under your control: clear communication, honest priorities, and finishing what you start.\n\nIf tension grows, don't numb it with endless scrolling. Take a short break, move your body a little, and then return to the one thing that matters most today.",
+        "cta": "Write down the single most important task for today and commit to moving it forward at least by one clear step."
       },
       "money_focus": {
-        "body": "Hoy conviene mirar tus finanzas con más claridad que miedo. Ver los números reales puede bajar la ansiedad si lo haces con honestidad.",
-        "copy_short": "Revisa tus números: ingresos, gastos, pequeñas fugas. Una imagen clara calma más que evitar el tema.",
-        "copy_long": "El día es bueno para pequeños pero importantes movimientos en el área económica: revisar el presupuesto, cancelar una suscripción inútil, comprobar facturas o enviar una factura pendiente. Intenta no dramatizar las variaciones temporales y piensa más en decisiones y hábitos que te den estabilidad a largo plazo.",
-        "cta": "Elige una acción concreta con el dinero (cancelar un pago, mover una pequeña cantidad al ahorro, cerrar una factura pendiente) y hazla hoy."
+        "body": "Your attention towards money and resources can be especially productive now. It's a good moment to check numbers instead of guessing by mood.",
+        "copy_short": "Look at your real numbers: income, expenses, small leaks. Clarity reduces anxiety better than ignoring the topic.",
+        "copy_long": "Astrologically the day supports practical steps in finances: revising a budget, checking subscriptions, renegotiating a small agreement, or finally sending that invoice. Small corrections here can have a long-term effect.\n\nTry not to dramatise temporary fluctuations. Focus on decisions that are in your hands and on habits that make you feel safer, not just richer on paper.",
+        "cta": "Pick one small financial action (cancel a useless subscription, send an invoice, move a tiny sum to savings) and complete it today."
       },
       "love_vibes": {
-        "body": "Las relaciones y vínculos pueden sentirse hoy más presentes — tanto lo agradable como lo sensible. Es un buen momento para conversaciones suaves pero sinceras.",
-        "copy_short": "Añade un poco de calidez al día: un mensaje corto, un agradecimiento sincero o un pequeño gesto de atención.",
-        "copy_long": "Puedes ver con más claridad qué te nutre en las relaciones y qué te agota. En lugar de caer en reproches o culpas, prueba mirarlo con curiosidad: ¿qué tipo de contacto te hace sentir visto y seguro?\n\nHoy es buen día para decir algo amable en voz alta, escuchar sin prisa por dar consejos o nombrar tus necesidades sin acusaciones.",
-        "cta": "Acércate a una persona importante para ti con un mensaje breve y honesto o con un gesto sencillo de cuidado."
+        "body": "Connections with other people may feel more visible today — both the warm parts and the sensitive ones. This is a good time for honest but gentle conversations.",
+        "copy_short": "Add a little warmth: a simple message, a sincere thank you, or a short check-in with someone you care about.",
+        "copy_long": "You may notice more clearly what nourishes you in relationships and what drains you. Instead of going into blame or self-criticism, try a curious approach: what kind of contact actually helps you feel safe and seen?\n\nThis is a good day to say something kind out loud, to listen without rushing to give advice, or to gently name your own needs without accusations.",
+        "cta": "Reach out to one person who matters to you — with a short, honest message or a small gesture of attention."
       },
       "selfcare_nervous_system": {
-        "body": "Tu sistema nervioso puede estar pidiendo un ritmo más amable. Incluso un día ocupado puede ser más llevadero si introduces algunas pausas conscientes.",
-        "copy_short": "Dale al cuerpo una señal clara de seguridad: respiración lenta, bebida caliente, un estiramiento o un paseo corto sin móvil.",
-        "copy_long": "El estrés de fondo puede parecer algo normal, pero tu cuerpo sigue reaccionando a los gestos pequeños de cuidado. No tienes que cambiar toda tu vida en un día; empieza por detalles: comer sin pantallas, acostarte un poco antes, decir que no a una presión extra.\n\nLa meta hoy no es la perfección, sino un poco más de amabilidad hacia tus propios recursos.",
-        "cta": "Elige un pequeño ritual que calme tu sistema nervioso e inclúyelo de forma consciente en la agenda de hoy."
+        "body": "Your nervous system may be asking for a softer rhythm. Even a busy day can become kinder if you build in a few intentional pauses.",
+        "copy_short": "Give your body one clear signal of safety today: slow breath, warm tea, stretch, or a short walk without your phone.",
+        "copy_long": "Stress sometimes feels like a permanent background noise, but your body still responds to small signals of care. You don't have to radically change your life in one day. Start with tiny adjustments: a slower cup of coffee, a few minutes with your shoulders relaxed, saying 'no' to one unnecessary task.\n\nThe goal is not perfection, but a slightly kinder baseline for your system.",
+        "cta": "Choose one small ritual that calms your nervous system and deliberately include it in today's schedule."
       }
     }
   }
-
 }

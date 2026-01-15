@@ -9,10 +9,11 @@
     },
     "start": {
       "ask_birth_date": "Let’s set up your profile.\nPlease send your birth date in format *DD.MM.YYYY*.",
-      "welcome": "Hi! I’m your *{bot_name}* bot.\n\nI’ll send you a short daily astro-digest based on your birth data and current sky events.\n\nUse /today to get your digest for today.\nUse /snooze to pause/resume daily delivery."
+      "welcome": "Hi! I’m your *{bot_name}* bot.\n\nI’ll compute your natal chart and today’s transits and send you a short AI-powered astro digest based on your birth data and current sky events.\n\nUse /today to get your digest for today.\nUse /snooze to pause/resume daily delivery.\nUse /help to see what I can do and all commands."
     },
     "help": {
-      "basic": "I understand /start, /today and /snooze for now 🙂"
+      "basic": "I understand /start, /today and /snooze for now 🙂",
+      "full": "I’m *AstroDaily* — a daily astrology digest powered by AI.\n\nWhat I can do:\n• compute your natal chart and transits based on birth date, time and place;\n• build a short forecast for today from the most important aspects;\n• gently highlight today’s themes: work, relationships, money, self-care;\n• show your plan (/plan) and which features are available.\n\nMain commands:\n• /start — start or restart onboarding;\n• /today — daily digest for today;\n• /snooze — pause / resume delivery;\n• /plan — see your current plan and features;\n• /upgrade — learn how to get more features;\n• /help — short help about the bot and commands.\n\n_Note: I don’t provide medical, financial or legal advice. This is an informational and entertainment service._"
     },
     "onboarding": {
       "birth_date_invalid": "Please send your birth date in format *DD.MM.YYYY*, for example *12.10.1980*.",
@@ -20,6 +21,10 @@
       "birth_time_invalid": "Please send your birth time in format *HH:MM* (for example *07:30*), or type *Don’t know*.",
       "birth_place_prompt": "Thanks! 🙌\nNow type your *place of birth* — city and country, for example: *\"Kyiv, Ukraine\"*.",
       "birth_place_empty": "Please enter your place of birth, e.g. *\"Kyiv, Ukraine\"*.",
+      "prefs_topics_prompt": "Before we start, tell me what you’re most interested in right now:\n1) Work & projects\n2) Relationships & people\n3) Money & resources\n4) Self-care & energy\n\nSend the numbers separated by commas, for example: *1,3* or *2 4*.",
+      "prefs_topics_invalid": "I didn’t quite catch that 🤔\nPlease send the numbers from 1 to 4, for example: *1,3* or *2 4*.",
+      "prefs_delivery_prompt": "How long do you prefer your daily digest?\n1) Short — 1–2 short paragraphs\n2) Medium — some more detail\n3) Deep dive — longer, with more nuance\n\nSend *1*, *2* or *3*.",
+      "prefs_delivery_invalid": "Please choose *1*, *2* or *3* so I can adjust the length of your digest.",
       "complete": "Great, your birth data is saved ✅\n\nNow you can use /today to get your daily digest, or /snooze to pause notifications."
     },
     "today": {
@@ -40,7 +45,8 @@
       "generic_ack": "Thanks for your feedback!"
     },
     "upgrade": {
-      "summary": "Paid plans are still being wired up.\n\nSoon you will be able to upgrade via Stripe directly in this chat.\n\nFor now, if you want to try paid plans, just message support and tell which one you prefer:\n• *Daily Focus* — extended daily digest (≈ $0.99/month)\n• *Full* — daily digest + strong alerts + calendar (≈ $4.99/month).\n\nAfter payment we will manually enable the plan and notify you in Telegram."
+      "summary": "Paid plans are still being wired up.\n\nSoon you’ll be able to upgrade via Stripe right inside the chat.\n\nFor now, if you want to test paid plans, just message support and tell us which plan you’re interested in:\n• Daily Focus — extended daily digest (≈ $0.99/month)\n• Full — digest + strong alerts + calendar (≈ $4.99/month).\n\nAfter payment we will enable the plan manually and notify you in Telegram.",
+      "already_full": "You are already on the full plan. If you are missing something in the bot, message support and we’ll be happy to build it."
     },
     "rate_limit": "Too many requests. Try again in {seconds}s.",
     "plan": {
@@ -59,6 +65,37 @@
         "calendar": "Calendar (.ics)",
         "quiet_mode": "Quiet day mode / delivery control",
         "unknown": "Feature"
+      }
+    },
+    "settings": {
+      "summary": "*Your profile settings:*\n\n• Language: {language}\n• Plan: {plan_name}\n• Timezone: {timezone}\n• Delivery time: {delivery_time}\n• Delivery: {delivery_status}\n\nUse the buttons below to change these settings.",
+      "lang": {
+        "en": "English",
+        "ru": "Russian",
+        "es": "Spanish"
+      },
+      "language": {
+        "choose": "Choose your language:",
+        "changed": "Language updated to *{language}*."
+      },
+      "timezone": {
+        "not_set": "Not set",
+        "choose": "Choose your timezone:",
+        "changed": "Timezone updated to *{timezone}*."
+      },
+      "delivery_time": {
+        "not_set": "Not set",
+        "choose": "Choose your daily digest time:",
+        "changed": "Delivery time updated to *{delivery_time}*."
+      },
+      "delivery": {
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "btn": {
+        "language": "Language",
+        "timezone": "Timezone",
+        "delivery_time": "Delivery time"
       }
     }
   },
