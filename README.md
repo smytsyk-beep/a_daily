@@ -1,5 +1,1 @@
-# AstroDaily — Starter Repo (Docker + CI)
-
-See Quickstart inside.
-
-
+# AstroDaily – Starter Repo (Docker + CI)
