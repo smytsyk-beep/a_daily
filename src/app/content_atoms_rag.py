@@ -15,6 +15,9 @@ from app.astro.global_events import compute_global_events, GlobalEvent
 import sqlalchemy as sa
 from app.astro.transit_service import compute_daily_digest_transits
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ================== Вспомогательные структуры ==================
 
@@ -412,13 +415,22 @@ def select_atoms_for_day(
     if user_profile is None:
         user_profile = UserProfile(locale="en")
 
-    # 1. Транзиты из events (precompute)
+        # 1. Транзиты из events (precompute)
     transit_events = _load_digest_transit_events_for_day(db, user_id=user_id, day=day)
 
-    # fallback: если precompute не запускался — считаем на лету (без записи в БД)
+    # fallback: если precompute не запускался — считаем на лету
+    # и ОДНОВРЕМЕННО сохраняем события в БД, чтобы в следующий раз читать их как precompute
     if not transit_events:
+        logger.info(
+            "[RAG] Fallback compute_daily_digest_transits for user=%s day=%s",
+            user_id,
+            day,
+        )
+
         aspects = compute_daily_digest_transits(db, user_id=user_id, local_date=day)
-        # превращаем в "как бы events"
+
+        logger.info("[RAG] Got %d aspects from transit_service", len(aspects))
+
         transit_events = []
         for a in aspects:
             details = {
@@ -430,15 +442,25 @@ def select_atoms_for_day(
                 "aspect": a.aspect,
                 "orb_deg": a.orb_deg,
             }
-            transit_events.append(
-                models.Event(
-                    user_id=user_id,
-                    kind="transit_aspect",
-                    ts=datetime.now(timezone.utc),
-                    title="",
-                    details=details,
-                )
+
+            ev = models.Event(
+                user_id=user_id,
+                kind="transit_aspect",
+                ts=datetime.now(timezone.utc),
+                title="",
+                details=details,
             )
+
+            # важное отличие: записываем в сессию
+            db.add(ev)
+            transit_events.append(ev)
+
+        # аккуратно пытаемся зафлашить, чтобы id сразу появились,
+        # но не ломаем дайджест, если вдруг БД ругнётся
+        try:
+            db.flush()
+        except Exception:
+            pass
 
     # 2. Глобальные события (stub-фазы Луны)
     global_events = compute_global_events(day, day)

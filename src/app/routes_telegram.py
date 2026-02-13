@@ -770,7 +770,7 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
             )
             return {"status": "ok"}
 
-        # ========== 2. /today ==========
+        # ========= 4. /today =========
 
         if text.startswith("/today"):
             # rate limit
@@ -784,10 +784,35 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
 
             today = date.today()
 
+            # План пользователя и базовое ограничение длины
             plan_code, plan_cfg = _get_user_plan_for_db(db, user)
-            digest_cap = plan_cfg.digest_cap
+            digest_cap = plan_cfg.digest_cap  # "short" / "medium" / "long"
 
-            cache_key = _cache_key_today(user.id, today, lang, digest_cap)
+            # Предпочтительная длина из профиля пользователя
+            length_pref = None
+
+            # 1) сначала колонка users.digest_length_preference
+            if getattr(user, "digest_length_preference", None):
+                length_pref = user.digest_length_preference
+
+            # 2) если пусто — пробуем prefs JSONB
+            if not length_pref and getattr(user, "prefs", None):
+                prefs = user.prefs or {}
+                if isinstance(prefs, dict):
+                    length_pref = prefs.get("digest_length_preference")
+
+            # 3) если всё ещё ничего или странное значение — берём плановую длину
+            if length_pref not in ("short", "medium", "long"):
+                length_pref = digest_cap
+
+            # Конфиг для модуля дайджеста
+            digest_config: dict[str, object] = {
+                "time_local": tg_prefs.time_local,
+                "length": length_pref,
+            }
+
+            # Ключ кэша можно оставлять как раньше, чтобы сильно не трогать логику
+            cache_key = _cache_key_today(user.id, today, lang, length_pref)
             cached = TODAY_CACHE.get(cache_key)
             if cached:
                 send_message(
@@ -815,14 +840,10 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
                 )
                 return {"status": "ok"}
 
-            digest_config: dict[str, object] = {
-                "time_local": tg_prefs.time_local,
-                "length": digest_cap,
-            }
-
             try:
                 atoms = daily_digest_module.compute(
-                    user_id=user.id, config=digest_config
+                    user_id=user.id,
+                    config=digest_config,
                 )
             except Exception as exc:
                 print(f"[TG] /today error for user_id={user.id}: {exc!r}")
