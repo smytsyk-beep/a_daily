@@ -4,7 +4,6 @@ from datetime import date
 from app.db import SessionLocal
 from app import models
 from app.daily_digest_service import build_daily_digest_for_user
-from app.content_atoms_rag import UserProfile
 
 
 def _make_user(db) -> models.User:
@@ -82,19 +81,13 @@ def test_build_daily_digest_for_user_basic_flow():
         _ensure_birth_data(db, user.id)
         _seed_content_atoms(db)
 
-        profile = UserProfile(
-            locale="en",
-            interests=["general"],
-            preferred_length="short",
-        )
-
         day = date(2025, 1, 10)
 
         digest = build_daily_digest_for_user(
             db=db,
-            user_id=user.id,
-            day=day,
-            user_profile=profile,
+            user=user,
+            today=day,
+            length="short",
         )
 
         from app.text_generation import DailyDigestText

@@ -26,7 +26,7 @@ def make_user_profile_from_model(user: models.User) -> UserProfile:
 
     Используем:
       - user.locale
-      - user.prefs (если есть)  → focus_topics, digest_interests, text_length
+      - user.prefs (если есть)  → focus_topics, text_length
       - user.digest_interests / user.digest_length_preference как фолбек
     """
     # Локаль
@@ -37,15 +37,10 @@ def make_user_profile_from_model(user: models.User) -> UserProfile:
 
     # --- Интересы ---
     # Приоритет:
-    #   1) prefs["focus_topics"] или prefs["digest_interests"] (онбординг)
+    #   1) prefs["focus_topics"]
     #   2) user.digest_interests
     #   3) ["general"]
-    interests = (
-        prefs.get("focus_topics")
-        or prefs.get("digest_interests")
-        or getattr(user, "digest_interests", None)
-        or ["general"]
-    )
+    interests = prefs.get("focus_topics") or user.digest_interests or ["general"]
 
     # Приводим к списку строк
     if not isinstance(interests, list):
@@ -56,14 +51,11 @@ def make_user_profile_from_model(user: models.User) -> UserProfile:
 
     # --- Предпочитаемая длина текста ---
     # Приоритет:
-    #   1) prefs["text_length"] или prefs["digest_length_preference"]
+    #   1) prefs["text_length"]
     #   2) user.digest_length_preference
     #   3) "medium"
     preferred_length = (
-        prefs.get("text_length")
-        or prefs.get("digest_length_preference")
-        or getattr(user, "digest_length_preference", None)
-        or "medium"
+        prefs.get("text_length") or user.digest_length_preference or "medium"
     )
     if preferred_length not in ("short", "medium", "long"):
         preferred_length = "medium"
@@ -72,7 +64,7 @@ def make_user_profile_from_model(user: models.User) -> UserProfile:
         locale=locale,
         interests=interests,
         preferred_length=preferred_length,
-        delivery_time_local=getattr(user, "delivery_time_local", None),
+        delivery_time_local=user.delivery_time_local,
     )
 
 
@@ -102,53 +94,61 @@ def _compute_max_atoms(preferred_length: str, plan_code: Optional[str]) -> int:
 
 def build_daily_digest_for_user(
     db: Session,
-    user: models.User,
+    user_id: int,
     *,
-    today: Optional[date] = None,
-    length: Optional[str] = None,
+    day: date,
+    user_profile: Optional[UserProfile] = None,
+    length_override: Optional[str] = None,
 ) -> DailyDigestText:
     """
-    Основной вход: строит текст ежедневного дайджеста для пользователя.
+    Высокоуровневый сервис: строит текст ежедневного дайджеста для пользователя.
 
-    - db      — SQLAlchemy Session
-    - user    — объект модели User
-    - today   — дата, для которой считаем дайджест (по умолчанию — сегодня)
-    - length  — "short" / "medium" / "long" (если None — из профиля/плана)
+    Шаги:
+      1) По user_id подтягиваем models.User.
+      2) Читаем план пользователя (demo/daily/full/internal).
+      3) Собираем UserProfile (локаль, интересы, предпочитаемая длина текста).
+      4) Подбираем релевантные контент-атомы на день через select_atoms_for_day
+         (транзиты + глобальные события).
+      5) Если атомов нет (тихий день) — пробуем взять «общие» day_general_* атомы.
+      6) Рендерим итоговый текст через render_daily_digest_from_atoms.
     """
 
-    day = today or date.today()
+    # 0. Подтягиваем пользователя
+    user = db.query(models.User).filter(models.User.id == user_id).one()
 
     # 1. План пользователя
     plan_code: Optional[str] = None
-    length_override = length
     if length_override is None:
         try:
-            plan_code = get_user_plan(db, user.id)
+            plan_code = get_user_plan(db, user_id)
         except Exception:
+            # План не должен ломать основной флоу, просто игнорируем сбои
             plan_code = None
 
+        # Для demo принудительно короткий текст
         if plan_code == "demo":
             length_override = "short"
 
-    # 2. Профиль пользователя
-    user_profile = make_user_profile_from_model(user)
+    # 2. Собираем профиль пользователя (если его не передали извне)
+    if user_profile is None:
+        user_profile = make_user_profile_from_model(user)
 
-    # 3. Максимум атомов
+    # 3. Определяем, сколько атомов максимум брать в дайджест
     max_atoms = _compute_max_atoms(
         preferred_length=user_profile.preferred_length,
         plan_code=plan_code,
     )
 
-    # 4. Подбор атомов по транзитам и глобальным событиям
+    # 4. Основной подбор атомов по транзитам и глобальным событиям
     selected_atoms = select_atoms_for_day(
         db=db,
         user_id=user.id,
-        day=day,
+        day=day,  # ВАЖНО: аргумент называется day, не local_date
         user_profile=user_profile,
         max_total_atoms=max_atoms,
     )
 
-    # 4a. Тихий день — общие day_general_* атомы
+    # 4a. Тихий день: нет транзитных атомов → пробуем общие day_general_* атомы
     if not selected_atoms:
         general_atoms = select_general_day_atoms(
             db=db,
@@ -158,7 +158,9 @@ def build_daily_digest_for_user(
         if general_atoms:
             selected_atoms = general_atoms
 
-    # 5. Рендерим текст дайджеста
+    # 5. Рендерим итоговый текст дайджеста.
+    # Если selected_atoms пуст — render_daily_digest_from_atoms
+    # включит внутренний quiet-day фоллбек.
     digest = render_daily_digest_from_atoms(
         atoms=selected_atoms,
         day=day,
@@ -167,25 +169,3 @@ def build_daily_digest_for_user(
     )
 
     return digest
-
-
-def build_daily_digest_for_user_id(
-    db: Session,
-    user_id: int,
-    *,
-    today: Optional[date] = None,
-    length: Optional[str] = None,
-) -> Optional[DailyDigestText]:
-    """
-    Вспомогательный вход по user_id (удобно для модулей/оркестратора).
-    """
-    user = db.query(models.User).filter(models.User.id == user_id).one_or_none()
-    if user is None:
-        return None
-
-    return build_daily_digest_for_user(
-        db=db,
-        user=user,
-        today=today,
-        length=length,
-    )

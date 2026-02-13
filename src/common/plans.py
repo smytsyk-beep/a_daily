@@ -17,7 +17,8 @@ from sqlalchemy.orm import Session
 PlanCode = Literal["demo", "daily", "full", "internal"]
 
 # Default plan if entitlements отсутствуют (до Stripe): daily/free
-DEFAULT_PLAN: PlanCode = "daily"
+DEFAULT_PLAN: PlanCode = "demo"
+
 DEFAULT_PLAN_CODE: PlanCode = DEFAULT_PLAN  # backward-compat alias
 
 # Legacy values that may exist in entitlements.plan (your DB screenshot shows: basic/pro)
@@ -160,7 +161,7 @@ def get_user_plan(db: Session, user_id: int, **kwargs) -> PlanCode:
     SINGLE entrypoint used across app/tests.
 
     Reads current plan from entitlements.
-    If no active entitlement -> DEFAULT_PLAN ("daily").
+    If no active entitlement -> DEFAULT_PLAN ("demo").
 
     kwargs accepted for backward compatibility (e.g. today=..., now=...).
     """
