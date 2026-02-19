@@ -12,3 +12,6 @@ psycopg2-binary==2.9.9
 skyfield
 jplephem
 timezonefinder==6.5.2
+geopy==2.4.1
+googlemaps==4.10.0
+openai>=1.0.0

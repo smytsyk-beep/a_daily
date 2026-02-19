@@ -1,4 +1,12 @@
 # src/app/geo.py
+"""
+Утилиты для работы с географией и временем.
+
+Содержит:
+- Определение timezone по координатам (timezonefinder)
+- Конвертация локального времени в UTC
+- Устаревший geocode_place_nominatim (deprecated, используйте app.services.geocoder)
+"""
 
 from __future__ import annotations
 
@@ -20,25 +28,12 @@ except ImportError:  # pragma: no cover
 class GeoPoint:
     """
     Результат геокодинга (Nominatim и т.п.).
-    Сейчас используем детерминированную офлайн-карту для тестов/CI.
+    
+    DEPRECATED: используйте app.services.geocoder.GeoResult вместо этого.
     """
-
     lat: float
     lon: float
     display_name: Optional[str] = None
-
-
-# Детерминированная мапа для тестов/CI (без HTTP).
-# В проде можно расширять/заменить на Nominatim + кэш.
-_KNOWN_PLACES: dict[str, GeoPoint] = {
-    "nyc": GeoPoint(40.7128, -74.0060, "New York City, NY, USA"),
-    "new york": GeoPoint(40.7128, -74.0060, "New York City, NY, USA"),
-    "los angeles": GeoPoint(34.0522, -118.2437, "Los Angeles, CA, USA"),
-    "la": GeoPoint(34.0522, -118.2437, "Los Angeles, CA, USA"),
-    "london": GeoPoint(51.5074, -0.1278, "London, UK"),
-    "kyiv": GeoPoint(50.4501, 30.5234, "Kyiv, Ukraine"),
-    "kiev": GeoPoint(50.4501, 30.5234, "Kyiv, Ukraine"),
-}
 
 
 _tf_singleton: Optional["TimezoneFinder"] = None
@@ -55,20 +50,15 @@ def _get_tf() -> Optional["TimezoneFinder"]:
 
 def geocode_place_nominatim(query: str) -> Optional[GeoPoint]:
     """
-    Пока без внешнего HTTP.
-    Для тестов и CI используем локальную мапу _KNOWN_PLACES.
-
-    Позже: добавим реальный Nominatim (httpx) + кэш и гибрид с Google.
+    DEPRECATED: используйте app.services.geocoder вместо этого.
+    
+    Эта функция сохранена только для обратной совместимости с тестами.
+    В новом коде используйте:
+        from app.services.geocoder import get_geocoder_service
+        geocoder = get_geocoder_service(db, mode="nominatim")
+        result = geocoder.geocode(place, language="en")
     """
-    q = (query or "").strip().lower()
-    if not q:
-        return None
-
-    # 1) Детерминированный офлайн-слой
-    if q in _KNOWN_PLACES:
-        return _KNOWN_PLACES[q]
-
-    # 2) Пока не делаем HTTP (безопасно для CI)
+    # Минимальная заглушка для обратной совместимости
     return None
 
 
@@ -129,7 +119,9 @@ def resolve_place_to_coords_and_tz(
     place: str,
 ) -> tuple[Optional[GeoPoint], Optional[str]]:
     """
-    place -> GeoPoint -> tzid
+    DEPRECATED: используйте app.services.geocoder вместо этого.
+    
+    Сохранено для обратной совместимости с тестами.
     """
     gp = geocode_place_nominatim(place)
     if not gp:

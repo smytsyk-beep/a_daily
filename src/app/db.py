@@ -9,6 +9,7 @@ engine = create_engine(
     settings.DATABASE_URL,
     future=True,
     echo=settings.SQLALCHEMY_ECHO,
+    connect_args={"client_encoding": "utf8"},
 )
 
 SessionLocal = sessionmaker(

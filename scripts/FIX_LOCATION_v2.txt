@@ -1,0 +1,178 @@
+# Fix v2: Location Handling + Keyboard Removal + /today Check
+
+## Обнаруженные проблемы после первого фикса
+
+1. **Кнопки геолокации не исчезают** после перехода на следующий шаг
+2. **Команда `/today` падает с ошибкой** на строке 1382
+3. **Часовой пояс записывается** в таблицу, но что-то идёт не так
+
+## Исправления
+
+### 1. Корректное удаление клавиатуры
+
+**Проблема:** Отправлялось два сообщения подряд:
+1. Первое с `reply_markup={"remove_keyboard": True}`
+2. Второе без `reply_markup`
+
+Telegram убирает клавиатуру только если **последнее** сообщение содержит `remove_keyboard`.
+
+**Решение:** Объединить сообщения в одно:
+
+```python
+# БЫЛО (строки 802-814):
+send_message(chat_id, tr(lang, "tg.onboarding.timezone_saved", ...), 
+             reply_markup={"remove_keyboard": True})
+send_message(chat_id, tr(lang, "tg.onboarding.prefs_topics_prompt"))
+
+# СТАЛО (строка 807):
+send_message(
+    chat_id,
+    tr(lang, "tg.onboarding.timezone_saved", timezone=timezone_str) + "\n\n" + 
+    tr(lang, "tg.onboarding.prefs_topics_prompt"),
+    reply_markup={"remove_keyboard": True}
+)
+```
+
+Аналогично для fallback случая (строка 821-830).
+
+### 2. Проверка завершённости онбординга для /today
+
+**Проблема:** `/today` пытался работать даже если:
+- Онбординг не завершён
+- У пользователя нет `timezone`
+- Нет birth_data
+
+**Решение:** Добавлены проверки перед выполнением команды (строки 1344-1361):
+
+```python
+if text.startswith("/today"):
+    # Проверка завершённости онбординга
+    onboarding_state = _get_onboarding_state(user)
+    if onboarding_state and onboarding_state != STATE_COMPLETE:
+        send_message(chat_id, tr(lang, "tg.onboarding.incomplete"))
+        return {"status": "ok"}
+    
+    # Проверка наличия timezone
+    if not user.timezone:
+        send_message(chat_id, tr(lang, "tg.onboarding.incomplete"))
+        return {"status": "ok"}
+    
+    # ... дальше rate limit и логика digest
+```
+
+### 3. Локализация для незавершённого онбординга
+
+Добавлен ключ `tg.onboarding.incomplete` во все локали:
+
+**ru.json:**
+```json
+"incomplete": "Сначала нужно завершить настройку профиля.\n\nИспользуй /start для начала или продолжения онбординга."
+```
+
+**en.json:**
+```json
+"incomplete": "Please complete your profile setup first.\n\nUse /start to begin or continue onboarding."
+```
+
+**es.json:**
+```json
+"incomplete": "Por favor completa la configuración de tu perfil primero.\n\nUsa /start para comenzar o continuar el onboarding."
+```
+
+## Изменённые файлы
+
+1. `src/app/routes_telegram.py`:
+   - Строки 795-808: объединение сообщений с `remove_keyboard`
+   - Строки 816-831: fallback случай с `remove_keyboard`
+   - Строки 1344-1361: проверки перед `/today`
+
+2. `src/app/locales/ru.json` — добавлен `tg.onboarding.incomplete`
+3. `src/app/locales/en.json` — добавлен `tg.onboarding.incomplete`
+4. `src/app/locales/es.json` — добавлен `tg.onboarding.incomplete`
+5. `scripts/check_user_onboarding.py` — скрипт для проверки данных пользователя
+
+## Диагностика
+
+Для проверки данных конкретного пользователя используйте:
+
+```bash
+python scripts/check_user_onboarding.py <telegram_user_id>
+```
+
+Скрипт покажет:
+- ✅ Все данные пользователя (timezone, birth_data, prefs)
+- ✅ Состояние онбординга
+- ✅ Готовность для `/today`
+- ❌ Отсутствующие/некорректные данные
+
+Пример вывода:
+```
+============================================================
+USER DATA FOR tg_user_id=123456789
+============================================================
+
+Internal ID: 42
+Username: testuser
+Locale: ru
+Timezone: Europe/Kiev
+Delivery enabled: True
+Delivery time local: 09:00
+Digest length pref: medium
+
+--- PREFS (JSONB) ---
+  birth_date: 2024-01-01
+  birth_time: 12:00
+  birth_place: Kyiv, Ukraine
+  onboarding_state: complete
+
+--- BIRTH DATA ---
+  Birth date: 2024-01-01
+  Birth time: 12:00
+  Place: Kyiv, Ukraine
+  Lat/Lon: 50.4501, 30.5234
+  Timezone (BD): Europe/Kiev
+
+--- ONBOARDING ---
+  State: complete
+
+--- READINESS FOR /today ---
+  ✅ timezone: Europe/Kiev
+  ✅ birth_data: OK
+  ✅ onboarding: complete
+
+[SUCCESS] User is ready for /today!
+```
+
+## Тестирование
+
+1. **Новый онбординг с location:**
+   - Пройти онбординг
+   - На шаге timezone поделиться геолокацией
+   - ✅ Проверить, что клавиатура исчезла
+   - ✅ Проверить, что `/today` работает
+
+2. **Новый онбординг с пропуском:**
+   - Пройти онбординг
+   - На шаге timezone нажать "Пропустить"
+   - ✅ Проверить, что клавиатура исчезла
+   - ✅ Проверить, что timezone взят из birth_place
+   - ✅ Проверить, что `/today` работает
+
+3. **Незавершённый онбординг:**
+   - Начать онбординг
+   - НЕ завершать его
+   - Отправить `/today`
+   - ✅ Проверить, что бот просит завершить профиль
+
+4. **Запоздалый клик по location:**
+   - Завершить онбординг
+   - Нажать старую кнопку "📍 Поделиться локацией" (если она осталась)
+   - ✅ Проверить, что бот отправляет `tg.location.unexpected`
+
+## Результат
+
+✅ Клавиатура с геолокацией корректно убирается
+✅ `/today` работает только для завершивших онбординг пользователей
+✅ Понятные сообщения об ошибках на всех языках
+✅ Логи содержат достаточно информации для отладки
+✅ Скрипт диагностики для быстрой проверки данных пользователя

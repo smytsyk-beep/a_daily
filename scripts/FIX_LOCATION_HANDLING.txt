@@ -1,0 +1,104 @@
+# Fix: Location Message Handling Outside Onboarding Context
+
+## Проблема
+
+При тестировании онбординга нового пользователя была обнаружена проблема:
+
+1. Пользователь доходит до шага запроса текущего часового пояса (геолокация)
+2. Пользователь не замечает кнопку внизу и пропускает этот шаг (отправляет текстовое сообщение)
+3. Через несколько диалогов пользователь нажимает "Поделиться геолокацией"
+4. **Бот не обрабатывает location message** и отправляет: "Пока я понимаю команды /start, /today и /settings 🙂"
+5. Команда `/today` также не работает (требует завершения онбординга)
+
+## Причина
+
+Обработчик геолокации на строках 771-831 в `routes_telegram.py` проверял состояние пользователя:
+
+```python
+if location and onboarding_state == STATE_ASK_TIMEZONE_LOCATION:
+    # обработка location
+```
+
+Если пользователь уже перешёл на следующий шаг онбординга (например, `STATE_ASK_PREFS_TOPICS`), то location message не обрабатывался и проваливался до дефолтного help handler на строке 1678.
+
+## Решение
+
+### 1. Обработка неожиданной геолокации
+
+Добавлена обработка location message **вне контекста онбординга timezone**:
+
+```python
+if location:
+    # Проверяем контекст
+    if onboarding_state == STATE_ASK_TIMEZONE_LOCATION and lat and lon:
+        # Обрабатываем location для timezone
+        ...
+    else:
+        # Location получен НЕ в ожидаемом контексте
+        logger.warning("Received location outside of expected context", ...)
+        send_message(chat_id, tr(lang, "tg.location.unexpected"), ...)
+        return {"status": "ok"}
+```
+
+### 2. Удаление клавиатуры после перехода
+
+Добавлено `reply_markup={"remove_keyboard": True}` при переходе на следующий шаг:
+
+- После успешного получения location и сохранения timezone (строка 805)
+- При fallback если timezone не удалось определить (строка 830)
+- При пропуске геолокации текстовым сообщением (строка 370)
+
+Это предотвращает случайные клики по кнопке "📍 Поделиться локацией" позже.
+
+### 3. Локализация
+
+Добавлены ключи во все локали (EN/RU/ES):
+
+**ru.json:**
+```json
+"location": {
+  "unexpected": "Спасибо за геолокацию, но она уже не нужна 🙂\n\nТвой профиль настроен. Используй /today для дайджеста или /settings для настроек."
+}
+```
+
+**en.json:**
+```json
+"location": {
+  "unexpected": "Thanks for sharing your location, but it's not needed anymore 🙂\n\nYour profile is set up. Use /today for your daily digest or /settings for preferences."
+}
+```
+
+**es.json:**
+```json
+"location": {
+  "unexpected": "Gracias por compartir tu ubicación, pero ya no es necesaria 🙂\n\nTu perfil está configurado. Usa /today para tu resumen diario o /settings para preferencias."
+}
+```
+
+## Изменённые файлы
+
+1. `src/app/routes_telegram.py` — обработка location message
+2. `src/app/locales/ru.json` — русская локализация
+3. `src/app/locales/en.json` — английская локализация
+4. `src/app/locales/es.json` — испанская локализация
+5. `scripts/test_location_fix.py` — тестовый скрипт
+
+## Тестирование
+
+Запустите:
+```bash
+python scripts/test_location_fix.py
+```
+
+Рекомендуется мануально протестировать:
+1. Новый онбординг с отправкой геолокации
+2. Новый онбординг с пропуском геолокации (текст "Пропустить")
+3. Запоздалый клик по кнопке геолокации (после перехода на следующий шаг)
+4. Команда `/today` после завершения онбординга
+
+## Результат
+
+✅ Пользователь получает понятное сообщение вместо "неизвестная команда"
+✅ Клавиатура с кнопкой геолокации убирается после перехода
+✅ `/today` работает после завершения онбординга
+✅ Логи содержат warning для отладки

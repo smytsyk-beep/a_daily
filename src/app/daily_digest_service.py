@@ -8,6 +8,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app import models
+from common.config import get_settings
 from common.plans import get_user_plan
 from app.content_atoms_rag import (
     UserProfile,
@@ -80,23 +81,43 @@ def _compute_max_atoms(preferred_length: str, plan_code: Optional[str]) -> int:
     """
     Определяем, сколько атомов максимум можно брать в дайджест.
 
-    Базовое правило:
-      short  → 2
-      medium → 4
-      long   → 6
+    Логика:
+    1. Берём plan_config.digest_cap из плана (short/medium/long)
+    2. Если у пользователя preferred_length выше, чем план позволяет — ограничиваем планом
+    3. Конвертируем в количество атомов:
+       short  → 2 атома  (краткий обзор, 1-2 абзаца)
+       medium → 3 атома  (сбалансированный, 2-3 абзаца)
+       long   → 6 атомов (подробный, 3-6 абзацев)
 
-    Для плана demo — всегда не больше 2 атомов.
+    Для плана demo — всегда не больше 2 атомов (план Demo cap=short).
     """
-    max_atoms = 4
-
-    if preferred_length == "short":
+    from common.plans import get_plan_config, normalise_plan_code
+    
+    # Нормализуем plan_code
+    plan = normalise_plan_code(plan_code)
+    plan_cfg = get_plan_config(plan)
+    
+    # Ограничение плана
+    plan_cap = plan_cfg.digest_cap  # "short" | "medium" | "long"
+    
+    # Иерархия длин для сравнения
+    length_hierarchy = {"short": 1, "medium": 2, "long": 3}
+    
+    # Эффективная длина: минимум из (preferred_length, plan_cap)
+    effective_length = preferred_length
+    if length_hierarchy.get(preferred_length, 2) > length_hierarchy.get(plan_cap, 2):
+        effective_length = plan_cap
+    
+    # Конвертируем в количество атомов
+    max_atoms = 3  # default для medium
+    
+    if effective_length == "short":
         max_atoms = 2
-    elif preferred_length == "long":
+    elif effective_length == "long":
         max_atoms = 6
-
-    if plan_code == "demo":
-        max_atoms = min(max_atoms, 2)
-
+    elif effective_length == "medium":
+        max_atoms = 3
+    
     return max_atoms
 
 
@@ -115,31 +136,57 @@ def build_daily_digest_for_user(
     - today   — дата, для которой считаем дайджест (по умолчанию — сегодня)
     - length  — "short" / "medium" / "long" (если None — из профиля/плана)
     """
+    import logging
+    logger = logging.getLogger(__name__)
 
     day = today or date.today()
 
-    # 1. План пользователя
-    plan_code: Optional[str] = None
-    length_override = length
-    if length_override is None:
-        try:
-            plan_code = get_user_plan(db, user.id)
-        except Exception:
-            plan_code = None
+    logger.info(
+        "[DIGEST_SERVICE] build_daily_digest_for_user: user_id=%d, day=%s, length_override=%s",
+        user.id, day, length
+    )
 
-        if plan_code == "demo":
-            length_override = "short"
+    # 1. План пользователя (читаем всегда!)
+    plan_code: Optional[str] = None
+    try:
+        plan_code = get_user_plan(db, user.id)
+        logger.info("[DIGEST_SERVICE] User plan: %s", plan_code)
+    except Exception as e:
+        logger.warning("[DIGEST_SERVICE] Failed to get user plan: %s", e)
+        plan_code = None
+    
+    # Для плана demo принудительно ставим short, если length не задан явно
+    length_override = length
+    if length_override is None and plan_code == "demo":
+        length_override = "short"
+        logger.info("[DIGEST_SERVICE] Demo plan detected, forcing length=short")
 
     # 2. Профиль пользователя
     user_profile = make_user_profile_from_model(user)
-
-    # 3. Максимум атомов
-    max_atoms = _compute_max_atoms(
-        preferred_length=user_profile.preferred_length,
-        plan_code=plan_code,
+    
+    logger.info(
+        "[DIGEST_SERVICE] User profile: interests=%s, preferred_length=%s",
+        user_profile.interests, user_profile.preferred_length
     )
 
-    # 4. Подбор атомов по транзитам и глобальным событиям
+    # 3. Определяем финальную длину для выборки атомов
+    # Если length_override передан - используем его, иначе - из профиля
+    effective_length = length_override if length_override else user_profile.preferred_length
+    
+    logger.info("[DIGEST_SERVICE] Effective length for atom selection: %s", effective_length)
+    
+    # 4. Максимум атомов (теперь используем effective_length)
+    max_atoms = _compute_max_atoms(
+        preferred_length=effective_length,
+        plan_code=plan_code,
+    )
+    
+    logger.info(
+        "[DIGEST_SERVICE] Computed max_atoms=%d (plan=%s, length=%s)",
+        max_atoms, plan_code, effective_length
+    )
+
+        # 5. Подбор атомов по транзитам и глобальным событиям
     selected_atoms = select_atoms_for_day(
         db=db,
         user_id=user.id,
@@ -147,23 +194,92 @@ def build_daily_digest_for_user(
         user_profile=user_profile,
         max_total_atoms=max_atoms,
     )
+    
+    logger.info(
+        "[DIGEST_SERVICE] Selected %d atoms from RAG layer (max requested: %d)",
+        len(selected_atoms), max_atoms
+    )
+    
+    # Логируем выбранные атомы для отладки
+    for i, sel in enumerate(selected_atoms, 1):
+        logger.debug(
+            "[DIGEST_SERVICE] RAG Atom %d: id=%d, trigger=%s, persona_tags=%s, score=%.2f",
+            i, sel.atom.id, sel.atom.trigger, sel.atom.persona_tags, sel.score
+        )
 
-    # 4a. Тихий день — общие day_general_* атомы
+    # 5a. Тихий день — общие day_general_* атомы
     if not selected_atoms:
+        logger.info("[DIGEST_SERVICE] No atoms from RAG, trying general day atoms")
         general_atoms = select_general_day_atoms(
             db=db,
             user_profile=user_profile,
             max_atoms=max_atoms,
         )
         if general_atoms:
+            logger.info("[DIGEST_SERVICE] Using %d general day atoms", len(general_atoms))
+            for i, sel in enumerate(general_atoms, 1):
+                logger.debug(
+                    "[DIGEST_SERVICE] General Atom %d: id=%d, topic_tag=%s",
+                    i, sel.atom.id, sel.atom.topic_tag
+                )
             selected_atoms = general_atoms
+        else:
+            logger.info("[DIGEST_SERVICE] No general atoms found either")
+    # 5b. Если атомов меньше чем max_atoms — дополняем general day atoms
+    elif len(selected_atoms) < max_atoms:
+        logger.info(
+            "[DIGEST_SERVICE] Only %d atoms from RAG (requested %d), adding general day atoms",
+            len(selected_atoms), max_atoms
+        )
+        remaining = max_atoms - len(selected_atoms)
+        general_atoms = select_general_day_atoms(
+            db=db,
+            user_profile=user_profile,
+            max_atoms=remaining,
+        )
+        if general_atoms:
+            logger.info("[DIGEST_SERVICE] Adding %d general day atoms", len(general_atoms))
+            for i, sel in enumerate(general_atoms, 1):
+                logger.debug(
+                    "[DIGEST_SERVICE] General Atom %d: id=%d, topic_tag=%s",
+                    i, sel.atom.id, sel.atom.topic_tag
+                )
+            selected_atoms.extend(general_atoms)
+            logger.info("[DIGEST_SERVICE] Total atoms after adding general: %d", len(selected_atoms))
 
-    # 5. Рендерим текст дайджеста
+    # 6. A/B: назначаем вариант (simple vs llm) по user_id для стабильного сплита
+    ab_percent = get_settings().AB_DIGEST_LLM_PERCENT
+    use_llm = (hash(user.id) % 100) < ab_percent if user else True
+
+    # 7. Рендерим текст дайджеста
     digest = render_daily_digest_from_atoms(
         atoms=selected_atoms,
         day=day,
         user_profile=user_profile,
         length_override=length_override,
+        use_llm=use_llm,
+    )
+
+    # 8. Cost tracking: запись в llm_usage_log при использовании LLM
+    if getattr(digest, "llm_usage", None) and user:
+        usage = digest.llm_usage
+        log_entry = models.LLMUsageLog(
+            user_id=user.id,
+            model=usage["model"],
+            prompt_tokens=usage["prompt_tokens"],
+            completion_tokens=usage["completion_tokens"],
+            estimated_cost_usd=float(usage["estimated_cost_usd"]),
+            cache_hit=usage["cache_hit"],
+        )
+        db.add(log_entry)
+        logger.debug(
+            "[DIGEST_SERVICE] LLM usage logged: model=%s, cache_hit=%s",
+            usage["model"], usage["cache_hit"],
+        )
+
+    logger.info(
+        "[DIGEST_SERVICE] Digest rendered: %d chars body, %d chars title",
+        len(digest.body), len(digest.title)
     )
 
     return digest

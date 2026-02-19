@@ -11,7 +11,7 @@ from datetime import datetime
 
 def simulate_today_command(tg_user_id: int, host: str = "localhost", port: int = 8080):
     """Симулирует отправку команды /today через Telegram webhook."""
-    
+
     update_payload = {
         "update_id": 123456789,
         "message": {
@@ -36,15 +36,15 @@ def simulate_today_command(tg_user_id: int, host: str = "localhost", port: int =
 
     try:
         conn = HTTPConnection(host, port, timeout=30)
-        
+
         body = json.dumps(update_payload)
         headers = {"Content-Type": "application/json"}
-        
+
         conn.request("POST", "/telegram/webhook", body, headers)
-        
+
         response = conn.getresponse()
-        response_body = response.read().decode('utf-8')
-        
+        response_body = response.read().decode("utf-8")
+
         print(f"Response Status: {response.status}")
         print(f"Response Body:")
         try:

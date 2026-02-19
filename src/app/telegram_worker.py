@@ -132,7 +132,39 @@ def send_daily_digests_for_day(on_date: Optional[date] = None) -> int:
                 # используем on_date как опорную дату.
                 user_plan = get_user_plan(db, user.id, today=on_date)
                 plan_cfg = get_plan_runtime_config(user_plan.code)
-                length_override = plan_cfg.digest_cap
+                digest_cap = plan_cfg.digest_cap
+                
+                # Читаем пользовательскую настройку длины
+                length_pref = None
+                
+                # 1) сначала колонка users.digest_length_preference
+                if getattr(user, "digest_length_preference", None):
+                    length_pref = user.digest_length_preference
+                
+                # 2) если пусто — пробуем prefs JSONB
+                if not length_pref and getattr(user, "prefs", None):
+                    prefs = user.prefs or {}
+                    if isinstance(prefs, dict):
+                        length_pref = prefs.get("digest_length_preference")
+                
+                # 3) если всё ещё ничего или странное значение — берём плановую длину
+                if length_pref not in ("short", "medium", "long"):
+                    length_pref = digest_cap
+                
+                # 4) Применяем plan cap (минимум из user_pref и plan_cap)
+                length_order = {"short": 0, "medium": 1, "long": 2}
+                user_order = length_order.get(length_pref, 0)
+                cap_order = length_order.get(digest_cap, 0)
+                
+                if user_order > cap_order:
+                    length_pref = digest_cap
+                    print(
+                        f"[TG] User {user.id} digest length clamped by plan: "
+                        f"preference={length_pref} → cap={digest_cap}"
+                    )
+                
+                length_override = length_pref
+                
             except Exception as exc:
                 # Не даём проблемам с планами ломать воркер:
                 # в случае ошибки используем длину по умолчанию

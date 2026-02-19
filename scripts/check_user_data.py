@@ -169,9 +169,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Check user data in database for AstroDaily"
     )
-    parser.add_argument(
-        "--user-id", type=int, required=True, help="User ID to check"
-    )
+    parser.add_argument("--user-id", type=int, required=True, help="User ID to check")
     parser.add_argument(
         "--date",
         type=str,

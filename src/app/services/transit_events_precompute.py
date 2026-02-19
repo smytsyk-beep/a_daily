@@ -117,3 +117,62 @@ def precompute_transit_events_for_all_users(
         )
 
     return total
+
+
+def get_active_user_ids_for_precompute(db: Session) -> List[int]:
+    """
+    Пользователи, для которых имеет смысл precompute транзитов:
+    есть birth_data (иначе транзиты не посчитать).
+    """
+    from sqlalchemy import select
+
+    rows = db.execute(
+        select(models.BirthData.user_id).distinct()
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def precompute_transit_events_tomorrow_for_active_users(db: Session) -> int:
+    """
+    Pre-compute транзитов на завтра (в локальной дате пользователя) для всех
+    активных пользователей (с birth_data). Вызывать из cron/worker, например в 3:00 UTC.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    user_ids = get_active_user_ids_for_precompute(db)
+    if not user_ids:
+        logger.info("[PRECOMPUTE] No active users with birth_data, skip")
+        return 0
+
+    total = 0
+    for uid in user_ids:
+        try:
+            user = db.query(models.User).filter(models.User.id == uid).one()
+            today_local = _user_local_today(user)
+            tomorrow_local = today_local + timedelta(days=1)
+            n = precompute_transit_events_for_user(
+                db,
+                user_id=uid,
+                start_local=tomorrow_local,
+                end_local=tomorrow_local,
+            )
+            total += n
+        except Exception as e:
+            logger.warning(
+                "[PRECOMPUTE] Failed for user_id=%s: %s",
+                uid,
+                e,
+                exc_info=True,
+            )
+            # сессия может быть в плохом состоянии — для следующего user нужна новая?
+            # precompute_transit_events_for_user делает commit(), при ошибке — rollback не здесь
+            db.rollback()
+
+    logger.info(
+        "[PRECOMPUTE] Tomorrow: %d users, %d events written",
+        len(user_ids),
+        total,
+    )
+    return total
