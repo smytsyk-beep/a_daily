@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app import models, repo
 from app.modules import daily_digest as daily_digest_module
+from app.modules.daily_digest import _user_local_date_and_time_iso
 from app.telegram_client import send_message, answer_callback_query
 from app.telegram_prefs import get_telegram_prefs_from_user
 from app.repo import session_scope
@@ -1627,11 +1628,18 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
                 )
                 return {"status": "ok"}
 
-            today = date.today()
+            # День по таймзоне пользователя (ключ кеша = тот же день, что и контент дайджеста)
+            now_utc = datetime.utcnow()
+            today, _ = _user_local_date_and_time_iso(user, now_utc)
 
             # План пользователя и базовое ограничение длины
             plan_code, plan_cfg = _get_user_plan_for_db(db, user)
             digest_cap = plan_cfg.digest_cap  # "short" / "medium" / "long"
+
+            # prefs всегда определён (избегаем UnboundLocalError в логере при cap clamp)
+            prefs = getattr(user, "prefs", None) or {}
+            if not isinstance(prefs, dict):
+                prefs = {}
 
             # Предпочтительная длина из профиля пользователя
             length_pref = None
@@ -1641,10 +1649,8 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
                 length_pref = user.digest_length_preference
 
             # 2) если пусто — пробуем prefs JSONB
-            if not length_pref and getattr(user, "prefs", None):
-                prefs = user.prefs or {}
-                if isinstance(prefs, dict):
-                    length_pref = prefs.get("digest_length_preference")
+            if not length_pref and prefs:
+                length_pref = prefs.get("digest_length_preference")
 
             # 3) если всё ещё ничего или странное значение — берём плановую длину
             if length_pref not in ("short", "medium", "long"):
@@ -1662,8 +1668,10 @@ async def telegram_webhook(request: Request) -> Dict[str, str]:
                 logger.info(
                     "User digest length clamped by plan cap",
                     user_id=user.id,
-                    user_preference=user.digest_length_preference
-                    or prefs.get("digest_length_preference"),
+                    user_preference=(
+                        getattr(user, "digest_length_preference", None)
+                        or prefs.get("digest_length_preference")
+                    ),
                     plan_cap=digest_cap,
                     final_length=length_pref,
                 )

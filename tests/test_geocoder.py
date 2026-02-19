@@ -10,6 +10,7 @@
 """
 
 import pytest
+from datetime import datetime, timedelta
 from unittest.mock import Mock, MagicMock
 from sqlalchemy.orm import Session
 
@@ -29,6 +30,7 @@ from app.models import GeocodeCache
 # ============================================================================
 # Тесты нормализации
 # ============================================================================
+
 
 def test_normalize_place_lowercase():
     """Нормализация приводит к нижнему регистру"""
@@ -63,18 +65,21 @@ def test_normalize_place_strips_whitespace():
 
 def test_normalize_place_equivalence():
     """Проверка, что разные варианты дают одинаковый ключ"""
-    # Киев на разных языках
+    # Киев на разных языках (Kiev = Kyiv после канонизации)
     assert _normalize_place("Kyiv, Ukraine") == _normalize_place("Kiev, Ukraine")
-    assert _normalize_place("Киев, Украина") == _normalize_place("киев украина")
-    
+    assert _normalize_place("Киев, Украина") == "киев украина"
+    assert _normalize_place("киев украина") == "киев украина"
+
     # Москва
     assert _normalize_place("Moscow, Russia") == _normalize_place("moscow russia")
-    assert _normalize_place("Москва, Россия") == _normalize_place("москва россия")
+    assert _normalize_place("Москва, Россия") == "москва россия"
+    assert _normalize_place("москва россия") == "москва россия"
 
 
 # ============================================================================
 # Тесты hardcoded fallback
 # ============================================================================
+
 
 def test_geocode_hardcoded_kyiv_variants():
     """Hardcoded fallback находит Киев во всех вариантах"""
@@ -91,7 +96,7 @@ def test_geocode_hardcoded_kyiv_variants():
         "Kiev, Ukraine",
         "Киев, Украина",
     ]
-    
+
     for variant in variants:
         result = _geocode_hardcoded(variant)
         assert result is not None, f"Failed for: {variant}"
@@ -122,7 +127,7 @@ def test_geocode_hardcoded_country_fallback():
     result = _geocode_hardcoded("Ukraine")
     assert result is not None
     assert result.lat == pytest.approx(50.4501, abs=0.01)  # Kyiv
-    
+
     result = _geocode_hardcoded("Украина")
     assert result is not None
     assert result.lat == pytest.approx(50.4501, abs=0.01)  # Kyiv
@@ -132,7 +137,7 @@ def test_geocode_hardcoded_not_found():
     """Hardcoded fallback возвращает None для неизвестных мест"""
     result = _geocode_hardcoded("Неизвестный Город")
     assert result is None
-    
+
     result = _geocode_hardcoded("Unknown City, Unknown Country")
     assert result is None
 
@@ -140,6 +145,7 @@ def test_geocode_hardcoded_not_found():
 # ============================================================================
 # Тесты Nominatim Provider (мокированные)
 # ============================================================================
+
 
 def test_nominatim_provider_init():
     """Nominatim provider инициализируется с параметрами"""
@@ -159,6 +165,7 @@ def test_nominatim_provider_lazy_init():
 # Тесты Google Provider (мокированные)
 # ============================================================================
 
+
 def test_google_provider_init():
     """Google provider инициализируется с API key"""
     provider = GoogleProvider("test_api_key", timeout=10)
@@ -176,6 +183,7 @@ def test_google_provider_lazy_init():
 # Тесты Chain Provider
 # ============================================================================
 
+
 def test_chain_provider_empty_chain():
     """Chain с пустым списком провайдеров использует hardcoded"""
     chain = ChainProvider([])
@@ -190,15 +198,15 @@ def test_chain_provider_first_wins():
     mock_provider1.geocode.return_value = GeoResult(
         lat=50.45, lon=30.52, display_name="Kyiv", provider="mock1"
     )
-    
+
     mock_provider2 = Mock()
     mock_provider2.geocode.return_value = GeoResult(
         lat=40.71, lon=-74.00, display_name="NYC", provider="mock2"
     )
-    
+
     chain = ChainProvider([mock_provider1, mock_provider2])
     result = chain.geocode("Kyiv")
-    
+
     assert result.provider == "mock1"  # Первый провайдер
     mock_provider1.geocode.assert_called_once_with("Kyiv", "en")
     mock_provider2.geocode.assert_not_called()  # Второй не вызывается
@@ -208,15 +216,15 @@ def test_chain_provider_fallback():
     """Chain переключается на второй провайдер при неудаче первого"""
     mock_provider1 = Mock()
     mock_provider1.geocode.return_value = None  # Первый не нашёл
-    
+
     mock_provider2 = Mock()
     mock_provider2.geocode.return_value = GeoResult(
         lat=40.71, lon=-74.00, display_name="NYC", provider="mock2"
     )
-    
+
     chain = ChainProvider([mock_provider1, mock_provider2])
     result = chain.geocode("NYC")
-    
+
     assert result.provider == "mock2"  # Второй провайдер
     mock_provider1.geocode.assert_called_once()
     mock_provider2.geocode.assert_called_once()
@@ -226,10 +234,10 @@ def test_chain_provider_final_hardcoded_fallback():
     """Chain использует hardcoded если все провайдеры не сработали"""
     mock_provider = Mock()
     mock_provider.geocode.return_value = None
-    
+
     chain = ChainProvider([mock_provider])
     result = chain.geocode("Kyiv, Ukraine")
-    
+
     assert result is not None
     assert result.provider == "hardcoded"
 
@@ -237,6 +245,7 @@ def test_chain_provider_final_hardcoded_fallback():
 # ============================================================================
 # Тесты GeocoderService с кешированием
 # ============================================================================
+
 
 @pytest.fixture
 def mock_db():
@@ -254,27 +263,27 @@ def mock_provider():
 
 def test_geocoder_service_cache_hit(mock_db, mock_provider):
     """GeocoderService возвращает результат из кеша"""
-    # Настраиваем мок: в кеше есть результат
+    # Настраиваем мок: в кеше есть результат (created_at — реальный datetime для проверки TTL)
     cached_entry = Mock()
     cached_entry.lat = 50.45
     cached_entry.lon = 30.52
     cached_entry.display_name = "Kyiv, Ukraine"
     cached_entry.provider = "cache"
-    cached_entry.created_at = Mock()  # Имитируем datetime
-    
+    cached_entry.created_at = datetime.utcnow()  # не истёкший TTL
+
     mock_query = Mock()
     mock_query.filter.return_value = mock_query
     mock_query.first.return_value = cached_entry
     mock_db.query.return_value = mock_query
-    
+
     service = GeocoderService(mock_db, mock_provider, cache_ttl_days=3650)
     result = service.geocode("Kyiv, Ukraine")
-    
+
     assert result is not None
     assert result.lat == 50.45
     assert result.lon == 30.52
     assert result.provider == "cache"
-    
+
     # Провайдер не должен вызываться при cache hit
     mock_provider.geocode.assert_not_called()
 
@@ -286,22 +295,22 @@ def test_geocoder_service_cache_miss(mock_db, mock_provider):
     mock_query.filter.return_value = mock_query
     mock_query.first.return_value = None
     mock_db.query.return_value = mock_query
-    
+
     # Провайдер возвращает результат
     mock_provider.geocode.return_value = GeoResult(
         lat=40.71, lon=-74.00, display_name="New York", provider="nominatim"
     )
-    
+
     service = GeocoderService(mock_db, mock_provider, cache_ttl_days=3650)
     result = service.geocode("New York")
-    
+
     assert result is not None
     assert result.lat == 40.71
     assert result.provider == "nominatim"
-    
+
     # Провайдер должен быть вызван
     mock_provider.geocode.assert_called_once_with("New York", "en")
-    
+
     # Результат должен быть сохранён в кеш
     mock_db.add.assert_called_once()
     mock_db.commit.assert_called_once()
@@ -313,18 +322,18 @@ def test_geocoder_service_normalization(mock_db, mock_provider):
     mock_query.filter.return_value = mock_query
     mock_query.first.return_value = None
     mock_db.query.return_value = mock_query
-    
+
     mock_provider.geocode.return_value = GeoResult(
         lat=50.45, lon=30.52, display_name="Kyiv", provider="nominatim"
     )
-    
+
     service = GeocoderService(mock_db, mock_provider)
-    
+
     # Разные варианты ввода должны приводить к одному cache key
     service.geocode("Kyiv, Ukraine")
     service.geocode("KYIV, UKRAINE")
     service.geocode("Kiev, Ukraine")
-    
+
     # Проверяем, что все запросы использовали нормализованный ключ
     # (в реальности они бы нашли один и тот же кеш)
 
@@ -335,14 +344,14 @@ def test_geocoder_service_language_parameter(mock_db, mock_provider):
     mock_query.filter.return_value = mock_query
     mock_query.first.return_value = None
     mock_db.query.return_value = mock_query
-    
+
     mock_provider.geocode.return_value = GeoResult(
         lat=50.45, lon=30.52, display_name="Київ, Україна", provider="nominatim"
     )
-    
+
     service = GeocoderService(mock_db, mock_provider)
     service.geocode("Kyiv", language="uk")
-    
+
     mock_provider.geocode.assert_called_once_with("Kyiv", "uk")
 
 
@@ -350,11 +359,15 @@ def test_geocoder_service_language_parameter(mock_db, mock_provider):
 # Тесты Factory
 # ============================================================================
 
+
 def test_get_geocoder_service_stub_mode(mock_db):
     """Factory создаёт stub geocoder (только hardcoded)"""
+    mock_db.query.return_value.filter.return_value.first.return_value = (
+        None  # cache miss
+    )
     service = get_geocoder_service(mock_db, mode="stub")
     assert isinstance(service, GeocoderService)
-    
+
     # Stub mode должен использовать только hardcoded
     result = service.geocode("Kyiv, Ukraine")
     assert result is not None
@@ -364,9 +377,7 @@ def test_get_geocoder_service_stub_mode(mock_db):
 def test_get_geocoder_service_nominatim_mode(mock_db):
     """Factory создаёт Nominatim geocoder"""
     service = get_geocoder_service(
-        mock_db, 
-        mode="nominatim",
-        nominatim_url="https://nominatim.openstreetmap.org"
+        mock_db, mode="nominatim", nominatim_url="https://nominatim.openstreetmap.org"
     )
     assert isinstance(service, GeocoderService)
     assert isinstance(service.provider, NominatimProvider)
@@ -378,7 +389,7 @@ def test_get_geocoder_service_chain_mode(mock_db):
         mock_db,
         mode="chain",
         nominatim_url="https://nominatim.openstreetmap.org",
-        google_api_key="test_key"
+        google_api_key="test_key",
     )
     assert isinstance(service, GeocoderService)
     assert isinstance(service.provider, ChainProvider)
@@ -394,13 +405,14 @@ def test_get_geocoder_service_invalid_mode(mock_db):
 # Интеграционные тесты (stub mode, без HTTP)
 # ============================================================================
 
+
 def test_integration_stub_mode_kyiv(mock_db):
     """Интеграционный тест: stub mode геокодирует Киев"""
     mock_db.query.return_value.filter.return_value.first.return_value = None
-    
+
     service = get_geocoder_service(mock_db, mode="stub")
     result = service.geocode("Kyiv, Ukraine")
-    
+
     assert result is not None
     assert result.lat == pytest.approx(50.4501, abs=0.01)
     assert result.lon == pytest.approx(30.5234, abs=0.01)
@@ -410,17 +422,17 @@ def test_integration_stub_mode_kyiv(mock_db):
 def test_integration_stub_mode_multiple_languages(mock_db):
     """Интеграционный тест: stub mode работает с разными языками"""
     mock_db.query.return_value.filter.return_value.first.return_value = None
-    
+
     service = get_geocoder_service(mock_db, mode="stub")
-    
+
     # Английский
     result_en = service.geocode("Kyiv, Ukraine", language="en")
     assert result_en is not None
-    
+
     # Русский
     result_ru = service.geocode("Киев, Украина", language="ru")
     assert result_ru is not None
-    
-    # Должны вернуть одинаковые координаты
-    assert result_en.lat == result_ru.lat
-    assert result_en.lon == result_ru.lon
+
+    # Должны вернуть одинаковые координаты (pytest.approx — устойчиво к разному представлению float)
+    assert result_en.lat == pytest.approx(result_ru.lat, abs=1e-9)
+    assert result_en.lon == pytest.approx(result_ru.lon, abs=1e-9)
