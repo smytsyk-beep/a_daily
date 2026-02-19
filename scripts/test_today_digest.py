@@ -16,7 +16,7 @@ print()
 
 with session_scope() as db:
     digest = build_daily_digest_for_user_id(db, user_id, today=today)
-    
+
     if digest:
         print(f"Title: {digest.title}")
         print(f"Length: {len(digest.body)} chars")

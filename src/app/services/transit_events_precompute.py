@@ -126,9 +126,7 @@ def get_active_user_ids_for_precompute(db: Session) -> List[int]:
     """
     from sqlalchemy import select
 
-    rows = db.execute(
-        select(models.BirthData.user_id).distinct()
-    ).fetchall()
+    rows = db.execute(select(models.BirthData.user_id).distinct()).fetchall()
     return [r[0] for r in rows]
 
 

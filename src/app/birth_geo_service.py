@@ -70,12 +70,12 @@ def ensure_birthdata_geo_for_user(db: Session, user: models.User) -> None:
         nominatim_timeout=settings.NOMINATIM_TIMEOUT_S,
         google_api_key=settings.GOOGLE_GEOCODING_API_KEY,
         google_timeout=settings.GOOGLE_GEOCODING_TIMEOUT_S,
-        cache_ttl_days=settings.GEOCODER_CACHE_TTL_DAYS
+        cache_ttl_days=settings.GEOCODER_CACHE_TTL_DAYS,
     )
-    
+
     user_lang = _get_user_language(user)
     geo = geocoder.geocode(place, language=user_lang)
-    
+
     if not geo:
         logger.warning(
             f"[GEO] Could not geocode birth place for user_id={user.id}, "

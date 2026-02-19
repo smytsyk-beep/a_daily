@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Add orb-based variations for transit atoms
 -- =============================================================================
--- 
+--
 -- This script adds content atoms that vary based on orb strength:
 -- - Exact (0-1°): Most intense, precise timing
 -- - Applying (1-3°): Building up, anticipation

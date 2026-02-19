@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Add house-based transit atoms for all locales
 -- =============================================================================
--- 
+--
 -- This script adds content atoms that combine transits with house positions.
 -- Houses represent different life areas:
 -- - 1st: Self, identity, appearance

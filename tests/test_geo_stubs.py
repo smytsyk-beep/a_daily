@@ -18,7 +18,7 @@ def test_tz_by_latlon_stub_does_not_crash():
 def test_geocode_place_stub_does_not_crash():
     """
     Проверка, что старый geocode_place_nominatim не падает.
-    
+
     DEPRECATED: возвращает None, т.к. старая функция устарела.
     Используйте app.services.geocoder.get_geocoder_service вместо этого.
     """

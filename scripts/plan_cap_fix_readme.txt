@@ -9,7 +9,7 @@
 
 ПРИЧИНА
 -------
-В коде /today и telegram_worker.py пользовательская настройка 
+В коде /today и telegram_worker.py пользовательская настройка
 digest_length_preference применялась напрямую, БЕЗ УЧЁТА plan.digest_cap.
 
 Старая логика:
@@ -17,7 +17,7 @@ digest_length_preference применялась напрямую, БЕЗ УЧЁ�
       length_pref = digest_cap
   # Используется length_pref напрямую ❌
 
-Это позволяло пользователю с настройкой medium получать medium дайджест 
+Это позволяло пользователю с настройкой medium получать medium дайджест
 даже на плане Demo (cap=short).
 
 ==========================================================================
@@ -30,7 +30,7 @@ digest_length_preference применялась напрямую, БЕЗ УЧЁ�
   length_order = {"short": 0, "medium": 1, "long": 2}
   user_order = length_order.get(length_pref, 0)
   cap_order = length_order.get(digest_cap, 0)
-  
+
   # Берём минимум (более ограничивающую длину)
   if user_order > cap_order:
       length_pref = digest_cap
@@ -95,7 +95,7 @@ Full (long)   | long      | long           | Совпадает
 2. Проверка через scheduled delivery:
    from app.telegram_worker import send_daily_digests_for_day
    from datetime import date
-   
+
    sent = send_daily_digests_for_day(date.today())
    print(f"Sent: {sent}")
 

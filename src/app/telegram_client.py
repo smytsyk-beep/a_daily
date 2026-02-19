@@ -58,10 +58,10 @@ def answer_callback_query(
 ) -> None:
     """
     Подтверждает обработку callback query.
-    
+
     Обязательно вызывать после обработки callback_data,
     иначе Telegram будет повторно отправлять callback_query.
-    
+
     Args:
         callback_query_id: ID callback query из update
         text: Опциональный текст для показа пользователю (toast/alert)

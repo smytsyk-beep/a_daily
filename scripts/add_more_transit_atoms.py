@@ -23,7 +23,6 @@ NEW_ATOMS = [
         "cta": "Выбери одно дело, которое требует смелости или энергии, и сделай его сегодня.",
         "style": "neutral",
     },
-    
     # sun_square_mars - напряжение и импульсивность
     {
         "locale": "ru",
@@ -36,7 +35,6 @@ NEW_ATOMS = [
         "cta": "Если чувствуешь раздражение, сделай паузу: подвигайся, выдохни, и только потом действуй.",
         "style": "neutral",
     },
-    
     # saturn_trine_mars - дисциплина и структура
     {
         "locale": "ru",
@@ -49,7 +47,6 @@ NEW_ATOMS = [
         "cta": "Составь чёткий план на важный проект и начни его выполнять по пунктам.",
         "style": "neutral",
     },
-    
     # jupiter_trine_mercury - оптимизм и идеи
     {
         "locale": "ru",
@@ -62,7 +59,6 @@ NEW_ATOMS = [
         "cta": "Запиши три новые идеи или цели, которые вдохновляют тебя прямо сейчас.",
         "style": "neutral",
     },
-    
     # venus_opposition_venus - отношения в фокусе
     {
         "locale": "ru",
@@ -75,7 +71,6 @@ NEW_ATOMS = [
         "cta": "Спроси себя: что из того, что я делаю сейчас, действительно приносит мне радость?",
         "style": "neutral",
     },
-    
     # uranus_trine_jupiter - неожиданные возможности
     {
         "locale": "ru",
@@ -88,7 +83,6 @@ NEW_ATOMS = [
         "cta": "Попробуй одну новую вещь сегодня: новый маршрут, новый подход к задаче, новый разговор.",
         "style": "neutral",
     },
-    
     # moon_opposition_venus - эмоции и отношения
     {
         "locale": "ru",
@@ -101,7 +95,6 @@ NEW_ATOMS = [
         "cta": "Если чувствуешь напряжение в отношениях, сделай паузу и вернись к разговору позже.",
         "style": "neutral",
     },
-    
     # mars_trine_pluto - глубокая трансформация
     {
         "locale": "ru",
@@ -124,7 +117,7 @@ print()
 with session_scope() as db:
     print(f"Adding {len(NEW_ATOMS)} new Russian transit atoms...")
     print()
-    
+
     for i, atom_data in enumerate(NEW_ATOMS, 1):
         atom = models.ContentAtom(
             locale=atom_data["locale"],
@@ -140,24 +133,27 @@ with session_scope() as db:
         db.add(atom)
         print(f"  {i}. Added: {atom_data['trigger']} ({atom_data['topic_tag']})")
         print(f"     Persona tags: {atom_data['persona_tags']}")
-    
+
     print()
     print("Committing...")
     db.commit()
     print("✅ Done!")
-    
+
     # Verify
     print()
     print("=" * 80)
     print("VERIFICATION")
     print("=" * 80)
     print()
-    
-    ru_transit_atoms = db.query(models.ContentAtom).filter(
-        models.ContentAtom.locale == 'ru',
-        models.ContentAtom.trigger.isnot(None)
-    ).count()
-    
+
+    ru_transit_atoms = (
+        db.query(models.ContentAtom)
+        .filter(
+            models.ContentAtom.locale == "ru", models.ContentAtom.trigger.isnot(None)
+        )
+        .count()
+    )
+
     print(f"Total Russian transit atoms: {ru_transit_atoms}")
     print()
     print("✅ SUCCESS: Added 8 new transit atoms for daily variety!")

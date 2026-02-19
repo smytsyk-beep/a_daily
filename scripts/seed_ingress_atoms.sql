@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Add ingress (sign change) atoms for all locales
 -- =============================================================================
--- 
+--
 -- This script adds content atoms for ingresses—when planets change zodiac signs.
 -- Each sign brings a different flavor to planetary energy.
 --

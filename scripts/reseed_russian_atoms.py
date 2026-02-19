@@ -32,7 +32,6 @@ RUSSIAN_ATOMS = [
         "copy_long": "Сегодня цели и эмоциональные потребности движутся в одном направлении. Это редкий день, когда можно продвигаться по задачам без внутреннего сопротивления. Сфокусируйся на простых, конкретных шагах: закрыть 2-3 хвоста, которые давно висят и мешают, или начать что-то новое без лишнего шума.",
         "cta": "Выбери одну задачу, которую откладывал, и спокойно закрой её сегодня.",
     },
-    
     # mercury_sextile_venus variants
     {
         "locale": "ru",
@@ -52,7 +51,6 @@ RUSSIAN_ATOMS = [
         "copy_long": "Меркурий и Венера вместе облегчают поиск общего языка. Сегодня благоприятно для любых ситуаций, где нужно договориться, согласовать или представить идею. Даже сложные темы обсуждаются чуть легче. Главное — не откладывать, а воспользоваться моментом.",
         "cta": "Отправь одно письмо или сообщение, которое давно в черновиках.",
     },
-    
     # mars_trine_jupiter variant
     {
         "locale": "ru",
@@ -63,7 +61,6 @@ RUSSIAN_ATOMS = [
         "copy_long": "Марс и Юпитер образуют поддерживающий аспект — сегодня есть и энергия, и уверенность. Это один из лучших транзитов для действий: начать проект, выйти из застоя, сделать рискованный, но важный шаг. Главное — не размазывать энергию на сто мелочей, а выбрать одно-два дела.",
         "cta": "Выбери один проект, который планировал, и сделай первый конкретный шаг сегодня.",
     },
-    
     # mars_square_sun variant
     {
         "locale": "ru",
@@ -74,7 +71,6 @@ RUSSIAN_ATOMS = [
         "copy_long": "Сегодня небо добавляет и силы, и внутреннего напряжения. Квадратура Марса и Солнца подсвечивает те сферы, где старые ограничения больше не работают и хочется ускориться. Транзит может быть очень продуктивным, если направить его в одну-две конкретные задачи, а не в конфликты и борьбу с миром. Старайся действовать точечно, не размазываясь сразу на всё: выбрать приоритет, сделать шаг и выдохнуть — и только потом переходить к следующему.",
         "cta": "Выбери одну задачу, где сейчас важен прогресс, и сфокусируйся на ней сегодня.",
     },
-    
     # venus_square_mars variant
     {
         "locale": "ru",
@@ -85,7 +81,6 @@ RUSSIAN_ATOMS = [
         "copy_long": "Венера и Марс образуют напряжённый аспект — желания и действия могут не совпадать. Хочется одного, делаешь другое, а результат не радует. В отношениях возможны недопонимания или лёгкая раздражённость. Лучше не форсировать события и не принимать важных решений в моменте.",
         "cta": "Дай себе пространство для рефлексии, прежде чем действовать импульсивно.",
     },
-    
     # mercury_square_neptune variant
     {
         "locale": "ru",
@@ -96,7 +91,6 @@ RUSSIAN_ATOMS = [
         "copy_long": "Меркурий и Нептун образуют сложный аспект — мышление может быть размытым, а детали ускользают. Легко что-то пропустить, недопонять или идеализировать. Сегодня лучше не подписывать важные документы, не принимать финансовых решений и дважды проверять договорённости.",
         "cta": "Перепроверь одну важную деталь или договорённость, прежде чем действовать.",
     },
-    
     # sun_square_saturn variant
     {
         "locale": "ru",
@@ -107,7 +101,6 @@ RUSSIAN_ATOMS = [
         "copy_long": "Солнце и Сатурн образуют напряжённый аспект — сегодня могут ощущаться ограничения, давление или усталость. Это не день для прорывов, а день для устойчивости. Лучше делать меньше, но надёжнее, и не требовать от себя невозможного.",
         "cta": "Выбери одну небольшую задачу, закрой её качественно и дай себе отдохнуть.",
     },
-    
     # venus_conjunct_jupiter variant
     {
         "locale": "ru",
@@ -118,7 +111,6 @@ RUSSIAN_ATOMS = [
         "copy_long": "Венера и Юпитер сходятся вместе — день располагает к щедрости, удовольствиям и лёгкому настроению. Люди склонны быть добрее, ситуации разрешаются мягче. Это хорошее время для подарков, приятных встреч и благодарности.",
         "cta": "Сделай что-то приятное для себя или близкого человека сегодня.",
     },
-    
     # Day general atoms (from ru.json atoms section)
     {
         "locale": "ru",
@@ -176,21 +168,24 @@ RUSSIAN_ATOMS = [
     },
 ]
 
+
 def main():
     print("=" * 80)
     print("RESEED RUSSIAN ATOMS")
     print("=" * 80)
     print()
-    
+
     with session_scope() as db:
         # Step 1: Delete all Russian atoms
         print("Step 1: Deleting all existing Russian atoms...")
-        deleted_count = db.query(models.ContentAtom).filter(
-            models.ContentAtom.locale == 'ru'
-        ).delete()
+        deleted_count = (
+            db.query(models.ContentAtom)
+            .filter(models.ContentAtom.locale == "ru")
+            .delete()
+        )
         print(f"Deleted {deleted_count} Russian atoms")
         print()
-        
+
         # Step 2: Insert new Russian atoms
         print("Step 2: Inserting fresh Russian atoms...")
         for i, atom_data in enumerate(RUSSIAN_ATOMS, 1):
@@ -205,39 +200,50 @@ def main():
                 style="neutral",
             )
             db.add(atom)
-            print(f"  {i}. Added: {atom_data['topic_tag']} (trigger: {atom_data['trigger']})")
-        
+            print(
+                f"  {i}. Added: {atom_data['topic_tag']} (trigger: {atom_data['trigger']})"
+            )
+
         # Step 3: Commit
         print()
         print("Step 3: Committing changes...")
         db.commit()
         print("Done!")
-        
+
         # Step 4: Verify
         print()
         print("Step 4: Verifying...")
-        ru_count = db.query(models.ContentAtom).filter(
-            models.ContentAtom.locale == 'ru'
-        ).count()
+        ru_count = (
+            db.query(models.ContentAtom)
+            .filter(models.ContentAtom.locale == "ru")
+            .count()
+        )
         print(f"Total Russian atoms in DB: {ru_count}")
-        
+
         # Check one atom to verify encoding
-        test_atom = db.query(models.ContentAtom).filter(
-            models.ContentAtom.locale == 'ru',
-            models.ContentAtom.trigger == 'sun_trine_moon'
-        ).first()
-        
+        test_atom = (
+            db.query(models.ContentAtom)
+            .filter(
+                models.ContentAtom.locale == "ru",
+                models.ContentAtom.trigger == "sun_trine_moon",
+            )
+            .first()
+        )
+
         if test_atom:
             print()
             print("Encoding test (sun_trine_moon atom):")
             print(f"Body (first 100 chars): {test_atom.body[:100]}")
             print(f"Contains 'Сегодня': {'Сегодня' in test_atom.body}")
-            print(f"Body is valid UTF-8: {all(ord(c) < 128 or ord(c) >= 1024 for c in test_atom.body[:50])}")
-    
+            print(
+                f"Body is valid UTF-8: {all(ord(c) < 128 or ord(c) >= 1024 for c in test_atom.body[:50])}"
+            )
+
     print()
     print("=" * 80)
     print("SUCCESS: Russian atoms reseeded with correct UTF-8 encoding!")
     print("=" * 80)
+
 
 if __name__ == "__main__":
     main()

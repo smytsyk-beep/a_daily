@@ -8,18 +8,18 @@ print("Clearing TODAY_CACHE")
 print("=" * 60)
 
 # Access internal store
-if hasattr(TODAY_CACHE, '_store'):
+if hasattr(TODAY_CACHE, "_store"):
     print(f"Cache size before: {len(TODAY_CACHE._store)} items")
-    
+
     # Show some cached keys
     if TODAY_CACHE._store:
         print("\nSample cached keys:")
         for i, key in enumerate(list(TODAY_CACHE._store.keys())[:5]):
             print(f"  {i+1}. {key}")
-    
+
     # Clear the cache
     TODAY_CACHE._store.clear()
-    
+
     print(f"\nCache size after: {len(TODAY_CACHE._store)} items")
     print("\n✅ Cache cleared successfully!")
 else:

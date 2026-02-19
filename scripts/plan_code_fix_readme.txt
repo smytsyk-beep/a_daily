@@ -29,7 +29,7 @@ if length_override is None:  # ❌ Условие FALSE, когда length пе�
         plan_code = get_user_plan(db, user.id)
     except Exception:
         plan_code = None
-    
+
     if plan_code == "demo":
         length_override = "short"
 ```
@@ -212,7 +212,7 @@ src/app/daily_digest_service.py
   • Пользователи с планом Daily + настройка long
     → Теперь получат medium дайджест (3 атома)
     → Раньше получали long (6 атомов) - БАГ!
-  
+
   • Пользователи с планом Full + настройка long
     → Продолжат получать long (6 атомов)
     → Без изменений

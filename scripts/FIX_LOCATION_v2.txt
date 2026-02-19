@@ -20,14 +20,14 @@ Telegram убирает клавиатуру только если **после�
 
 ```python
 # БЫЛО (строки 802-814):
-send_message(chat_id, tr(lang, "tg.onboarding.timezone_saved", ...), 
+send_message(chat_id, tr(lang, "tg.onboarding.timezone_saved", ...),
              reply_markup={"remove_keyboard": True})
 send_message(chat_id, tr(lang, "tg.onboarding.prefs_topics_prompt"))
 
 # СТАЛО (строка 807):
 send_message(
     chat_id,
-    tr(lang, "tg.onboarding.timezone_saved", timezone=timezone_str) + "\n\n" + 
+    tr(lang, "tg.onboarding.timezone_saved", timezone=timezone_str) + "\n\n" +
     tr(lang, "tg.onboarding.prefs_topics_prompt"),
     reply_markup={"remove_keyboard": True}
 )
@@ -51,12 +51,12 @@ if text.startswith("/today"):
     if onboarding_state and onboarding_state != STATE_COMPLETE:
         send_message(chat_id, tr(lang, "tg.onboarding.incomplete"))
         return {"status": "ok"}
-    
+
     # Проверка наличия timezone
     if not user.timezone:
         send_message(chat_id, tr(lang, "tg.onboarding.incomplete"))
         return {"status": "ok"}
-    
+
     # ... дальше rate limit и логика digest
 ```
 

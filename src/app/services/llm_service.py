@@ -49,7 +49,9 @@ def _extract_text_from_atom(atom, length: str) -> str:
     base_body = getattr(atom, "body", None) or ""
     short = (getattr(atom, "copy_short", None) or "").strip()
     long_ = (getattr(atom, "copy_long", None) or "").strip()
-    paragraphs = [p.strip() for p in base_body.split("\n\n") if p.strip()] if base_body else []
+    paragraphs = (
+        [p.strip() for p in base_body.split("\n\n") if p.strip()] if base_body else []
+    )
     if length == "short":
         return short or (paragraphs[0] if paragraphs else base_body)
     if length == "medium":
@@ -102,9 +104,8 @@ class LLMService:
 
         locale = (user_profile.locale if user_profile else "en") or "en"
         length = (
-            (user_profile.preferred_length if user_profile else "medium")
-            or "medium"
-        )
+            user_profile.preferred_length if user_profile else "medium"
+        ) or "medium"
         interests = list(user_profile.interests) if user_profile else []
 
         if locale != "ru":

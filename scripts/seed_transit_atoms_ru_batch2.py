@@ -10,6 +10,7 @@
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from app.repo import session_scope
@@ -168,6 +169,7 @@ BATCH2_ATOMS = [
     },
 ]
 
+
 def main():
     print("=" * 80)
     print("SEED TRANSIT ATOMS RU — BATCH 2")
@@ -197,10 +199,14 @@ def main():
         print()
         print("Done.")
 
-        ru_count = db.query(models.ContentAtom).filter(
-            models.ContentAtom.locale == "ru",
-            models.ContentAtom.trigger.isnot(None),
-        ).count()
+        ru_count = (
+            db.query(models.ContentAtom)
+            .filter(
+                models.ContentAtom.locale == "ru",
+                models.ContentAtom.trigger.isnot(None),
+            )
+            .count()
+        )
         print(f"Total RU transit atoms in DB: {ru_count}")
     print("=" * 80)
 

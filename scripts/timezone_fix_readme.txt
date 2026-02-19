@@ -43,7 +43,7 @@
 if state == STATE_ASK_TIMEZONE_LOCATION:
     # Резолвим timezone из birth_place через BirthData
     ensure_birthdata_geo_for_user(db, user)
-    
+
     # Берём timezone из BirthData и устанавливаем в user.timezone
     birth_data = (
         db.query(models.BirthData)
@@ -51,7 +51,7 @@ if state == STATE_ASK_TIMEZONE_LOCATION:
         .order_by(models.BirthData.id.desc())
         .first()
     )
-    
+
     if birth_data and birth_data.tz:
         user.timezone = birth_data.tz
         prefs["timezone"] = birth_data.tz

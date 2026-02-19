@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Add retrograde variations for transit atoms
 -- =============================================================================
--- 
+--
 -- This script adds content atoms for retrograde (Rx) periods.
 -- Retrograde motion appears when a planet seems to move backward from Earth's perspective.
 --

@@ -61,7 +61,7 @@ def test_user_digest(user_id: int, test_date: date | None = None):
         # 3. Строим дайджест (без override длины)
         print(f"🔄 Building digest with user's default settings...")
         print()
-        
+
         digest = build_daily_digest_for_user(db=db, user=user, today=test_date)
 
         print(f"\n{'=' * 80}")
@@ -85,9 +85,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Test atom selection logic for different plans and digest lengths"
     )
-    parser.add_argument(
-        "--user-id", type=int, required=True, help="User ID to test"
-    )
+    parser.add_argument("--user-id", type=int, required=True, help="User ID to test")
     parser.add_argument(
         "--date",
         type=str,

@@ -9,6 +9,7 @@
 
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from app.repo import session_scope
@@ -149,10 +150,14 @@ def main():
             db.add(atom)
             print(f"  {i}. {a['trigger']}")
         db.commit()
-        ru = db.query(models.ContentAtom).filter(
-            models.ContentAtom.locale == "ru",
-            models.ContentAtom.trigger.isnot(None),
-        ).count()
+        ru = (
+            db.query(models.ContentAtom)
+            .filter(
+                models.ContentAtom.locale == "ru",
+                models.ContentAtom.trigger.isnot(None),
+            )
+            .count()
+        )
         print(f"Total RU transit atoms: {ru}")
     print("=" * 80)
 

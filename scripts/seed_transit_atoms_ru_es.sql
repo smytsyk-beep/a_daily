@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Seed transit atoms for RU and ES locales
 -- =============================================================================
--- 
+--
 -- This script:
 -- 1. Removes test atoms (ml_test_tag) from RU locale
 -- 2. Updates existing RU and ES transit atoms with copy_long
@@ -16,8 +16,8 @@ BEGIN;
 -- STEP 1: Clean up test atoms from RU locale
 -- =============================================================================
 
-DELETE FROM content_atoms 
-WHERE locale = 'ru' 
+DELETE FROM content_atoms
+WHERE locale = 'ru'
   AND topic_tag = 'ml_test_tag';
 
 -- =============================================================================
@@ -25,28 +25,28 @@ WHERE locale = 'ru'
 -- =============================================================================
 
 -- RU: venus_trine_moon (ID=447)
-UPDATE content_atoms 
+UPDATE content_atoms
 SET copy_long = 'Сегодня эмоциональный фон мягче обычного. Венера и Луна образуют поддерживающий аспект, поэтому чувства и потребности легче согласовать между собой. Это хороший день, чтобы немного замедлиться, прислушаться к себе и к близким.
 
 Сделай ставку на простые удовольствия и планы без лишнего давления: спокойная прогулка, вкусная еда, тёплые, но не тяжёлые разговоры. По возможности избегай драм и резких эмоциональных реакций — небесная картинка поддерживает именно мягкость и доброжелательность.'
 WHERE id = 447;
 
 -- RU: mars_square_sun (ID=450)
-UPDATE content_atoms 
+UPDATE content_atoms
 SET copy_long = 'Сегодня небо добавляет и силы, и внутреннего напряжения. Квадратура Марса и Солнца подсвечивает те сферы, где старые ограничения уже тесны и хочется резко ускориться. Транзит может быть очень продуктивным, если направить его в одно-две конкретные задачи, а не в перепалки и борьбу с миром.
 
 Выбери реалистичную цель дня: закрыть зависшую задачу, навести порядок в хаотичном участке жизни или наконец принять решение, которое откладывалось. Действуй решительно, но регулярно проверяй тело: зажатые плечи, челюсть или тяжесть в животе — сигнал сделать паузу и выдохнуть.'
 WHERE id = 450;
 
 -- ES: venus_trine_moon (ID=448)
-UPDATE content_atoms 
+UPDATE content_atoms
 SET copy_long = 'Hoy el ambiente emocional es más suave de lo habitual. Venus y la Luna forman un aspecto de apoyo, facilitando que sentimientos y necesidades fluyan juntos. Es un buen día para ir más despacio, escucharte a ti y a los que te rodean.
 
 Apuesta por placeres simples y planes sin presión: un paseo tranquilo, buena comida, conversaciones cálidas pero ligeras. Evita dramas y reacciones emocionales intensas; el cielo apoya la suavidad y el buen rollo.'
 WHERE id = 448;
 
 -- ES: mars_square_sun (ID=451)
-UPDATE content_atoms 
+UPDATE content_atoms
 SET copy_long = 'Hoy el cielo añade energía y tensión interna. La cuadratura de Marte y el Sol resalta áreas donde las limitaciones antiguas ya no funcionan y quieres acelerar. Este tránsito puede ser muy productivo si lo canalizas en una o dos tareas concretas, no en conflictos.
 
 Elige un objetivo realista: cerrar algo pendiente, ordenar un área caótica o tomar una decisión postergada. Actúa con decisión, pero revisa tu cuerpo: hombros tensos, mandíbula apretada o peso en el abdomen son señales para pausar y respirar.'
@@ -58,7 +58,7 @@ WHERE id = 451;
 
 -- Транзит 1: Sun trine Moon (Солнце трин Луна) - гармония внутреннего и внешнего
 INSERT INTO content_atoms (locale, topic_tag, trigger, persona_tags, copy_short, copy_long, body, cta) VALUES
-('ru', 'tr_sun_moon_harmony', 'sun_trine_moon', '["general", "selfcare"]', 
+('ru', 'tr_sun_moon_harmony', 'sun_trine_moon', '["general", "selfcare"]',
  'Внутренние потребности и внешние задачи сегодня не спорят, а дополняют друг друга. Хороший день для мягкого планирования.',
  'Сегодня Солнце и Луна образуют гармоничный аспект — один из тех дней, когда твои внутренние потребности и внешние задачи не конфликтуют. Это хорошее время, чтобы наметить планы на ближайшую неделю или просто выдохнуть и сделать что-то для себя.
 

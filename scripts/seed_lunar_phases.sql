@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Add lunar phase atoms for all locales
 -- =============================================================================
--- 
+--
 -- This script adds content atoms for the major lunar phases.
 -- The Moon's cycle offers natural timing guidance:
 -- - New Moon: New beginnings, intention setting, planting seeds

@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Add seasonal variations for transit atoms
 -- =============================================================================
--- 
+--
 -- This script adds content atoms that vary based on seasonal context:
 -- - Spring (Mar-May): New beginnings, growth, fresh energy
 -- - Summer (Jun-Aug): Peak energy, action, fullness

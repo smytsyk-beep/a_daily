@@ -173,7 +173,7 @@ AstroDaily — Telegram-бот с:
 
 ### 10.4 Примеры запуска команд
 - запускать из корня проекта D:\Msn\A-project\a_daily
-- запускать через Doker, пример команды: 
+- запускать через Doker, пример команды:
   --  docker compose exec app python -m .....
   --  docker compose restart app
 

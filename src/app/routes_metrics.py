@@ -26,16 +26,23 @@ def _llm_metrics(db) -> dict:
         q_today = (
             db.query(
                 sa.func.count(models.LLMUsageLog.id).label("requests"),
-                sa.func.coalesce(sa.func.sum(models.LLMUsageLog.estimated_cost_usd), 0).label("cost_usd"),
-                sa.func.sum(sa.case((models.LLMUsageLog.cache_hit.is_(True), 1), else_=0)).label("cache_hits"),
-            )
-            .filter(models.LLMUsageLog.created_at >= today_start)
+                sa.func.coalesce(
+                    sa.func.sum(models.LLMUsageLog.estimated_cost_usd), 0
+                ).label("cost_usd"),
+                sa.func.sum(
+                    sa.case((models.LLMUsageLog.cache_hit.is_(True), 1), else_=0)
+                ).label("cache_hits"),
+            ).filter(models.LLMUsageLog.created_at >= today_start)
         ).one()
         q_all = (
             db.query(
                 sa.func.count(models.LLMUsageLog.id).label("requests"),
-                sa.func.coalesce(sa.func.sum(models.LLMUsageLog.estimated_cost_usd), 0).label("cost_usd"),
-                sa.func.sum(sa.case((models.LLMUsageLog.cache_hit.is_(True), 1), else_=0)).label("cache_hits"),
+                sa.func.coalesce(
+                    sa.func.sum(models.LLMUsageLog.estimated_cost_usd), 0
+                ).label("cost_usd"),
+                sa.func.sum(
+                    sa.case((models.LLMUsageLog.cache_hit.is_(True), 1), else_=0)
+                ).label("cache_hits"),
             )
         ).one()
         requests_today = q_today.requests or 0

@@ -33,7 +33,9 @@ class DailyDigestText:
     body: str
     affirmation: Optional[str]
     disclaimer: str
-    llm_usage: Optional[dict] = None  # model, prompt_tokens, completion_tokens, estimated_cost_usd, cache_hit
+    llm_usage: Optional[dict] = (
+        None  # model, prompt_tokens, completion_tokens, estimated_cost_usd, cache_hit
+    )
     render_variant: str = "simple"  # "simple" | "llm" — для A/B анализа
 
 
@@ -96,11 +98,11 @@ def _fallback_text(locale: str, length: str, day: date) -> DailyDigestText:
 def _extract_text_from_atom(atom, length: str) -> str:
     """
     Берём подходящий текст из атома в зависимости от желаемой длины:
-    
+
     - для short: copy_short (если есть), иначе первый абзац body
     - для medium: copy_long (если есть), иначе первые 1-2 абзаца body, иначе copy_short
     - для long: copy_long, иначе body целиком, иначе copy_short
-    
+
     Логика разбиения body по абзацам:
     - Абзацы разделяются двойным переносом строки "\n\n"
     - Для medium берём первые 2 абзаца (если body содержит >2 абзацев)
@@ -109,12 +111,12 @@ def _extract_text_from_atom(atom, length: str) -> str:
     base_body = getattr(atom, "body", None) or ""
     short = (atom.copy_short or "").strip()
     long_ = (atom.copy_long or "").strip()
-    
+
     # Разбиваем body на абзацы
     paragraphs = []
     if base_body:
         paragraphs = [p.strip() for p in base_body.split("\n\n") if p.strip()]
-    
+
     if length == "short":
         # Приоритет: copy_short > первый абзац body > body целиком
         if short:
@@ -123,7 +125,7 @@ def _extract_text_from_atom(atom, length: str) -> str:
             return paragraphs[0]
         else:
             return base_body
-    
+
     elif length == "medium":
         # Приоритет: copy_long > первые 2 абзаца body > copy_short > body целиком
         if long_:
@@ -138,7 +140,7 @@ def _extract_text_from_atom(atom, length: str) -> str:
             return short
         else:
             return base_body
-    
+
     else:  # length == "long"
         # Приоритет: copy_long > body целиком > copy_short
         if long_:
@@ -196,7 +198,9 @@ def render_daily_digest_from_atoms(
 
     logger.info(
         "[TEXT_GEN] render_daily_digest_from_atoms: received %d atoms, length=%s, locale=%s",
-        len(atoms), length, locale
+        len(atoms),
+        length,
+        locale,
     )
 
     if not atoms:
@@ -205,22 +209,21 @@ def render_daily_digest_from_atoms(
 
     chosen = atoms
     logger.info(
-        "[TEXT_GEN] Using all %d atoms for rendering (length=%s)",
-        len(chosen), length
+        "[TEXT_GEN] Using all %d atoms for rendering (length=%s)", len(chosen), length
     )
 
     for i, sel in enumerate(chosen, 1):
         logger.debug(
             "[TEXT_GEN] Atom %d: id=%d, trigger=%s, persona_tags=%s, score=%.2f",
-            i, sel.atom.id, sel.atom.trigger, sel.atom.persona_tags, sel.score
+            i,
+            sel.atom.id,
+            sel.atom.trigger,
+            sel.atom.persona_tags,
+            sel.score,
         )
 
     # Условие для LLM: включён флаг, 2–6 атомов, русская локаль
-    should_use_llm = (
-        use_llm
-        and 2 <= len(chosen) <= 6
-        and locale == "ru"
-    )
+    should_use_llm = use_llm and 2 <= len(chosen) <= 6 and locale == "ru"
     body: str
     llm_usage: Optional[dict] = None
     render_variant = "simple"
@@ -245,7 +248,8 @@ def render_daily_digest_from_atoms(
                 }
                 logger.info(
                     "[TEXT_GEN] Using LLM-enhanced body (%d chars, cache_hit=%s)",
-                    len(body), result.cache_hit,
+                    len(body),
+                    result.cache_hit,
                 )
             else:
                 body = _simple_render_body(chosen, length)

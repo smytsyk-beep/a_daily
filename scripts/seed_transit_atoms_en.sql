@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Seed transit atoms for EN locale
 -- =============================================================================
--- 
+--
 -- This script:
 -- 1. Updates existing EN transit atoms with triggers and copy_long
 -- 2. Adds 15+ new transit atoms for EN locale with multiple variants
@@ -16,8 +16,8 @@ BEGIN;
 -- =============================================================================
 
 -- EN: venus_trine_moon (find by existing pattern)
-UPDATE content_atoms 
-SET 
+UPDATE content_atoms
+SET
     trigger = 'venus_trine_moon',
     topic_tag = 'tr_venus_moon_harmony',
     persona_tags = '["general", "love", "selfcare"]',
@@ -31,17 +31,17 @@ Focus on simple pleasures and plans without pressure: a calm walk, good food, wa
 
 If there''s an important conversation or decision to make—today is a good moment: you can see both logic and emotions, and account for them without internal conflict.',
     cta = 'Write down one thing you want to do for yourself today, and just do it.'
-WHERE locale = 'en' 
+WHERE locale = 'en'
   AND id IN (
-    SELECT id FROM content_atoms 
-    WHERE locale = 'en' 
+    SELECT id FROM content_atoms
+    WHERE locale = 'en'
       AND (trigger = 'venus_trine_moon' OR topic_tag = 'transit_venus_trine_moon')
     LIMIT 1
   );
 
 -- EN: mars_square_sun (find by existing pattern)
-UPDATE content_atoms 
-SET 
+UPDATE content_atoms
+SET
     trigger = 'mars_square_sun',
     topic_tag = 'tr_mars_sun_push',
     persona_tags = '["general", "work", "selfcare"]',
@@ -55,10 +55,10 @@ Choose a realistic goal for the day: close a pending task, organize a chaotic ar
 
 If you feel resistance from others—don''t push harder. Instead, clarify your position and give space. The transit will pass, but the burned bridges will remain.',
     cta = 'Pick one concrete task you''ve been avoiding, and close it today with full focus.'
-WHERE locale = 'en' 
+WHERE locale = 'en'
   AND id IN (
-    SELECT id FROM content_atoms 
-    WHERE locale = 'en' 
+    SELECT id FROM content_atoms
+    WHERE locale = 'en'
       AND (trigger = 'mars_square_sun' OR topic_tag = 'transit_mars_square_sun')
     LIMIT 1
   );
@@ -69,7 +69,7 @@ WHERE locale = 'en'
 
 -- Transit 1: Sun trine Moon (harmony of inner and outer)
 INSERT INTO content_atoms (locale, topic_tag, trigger, persona_tags, copy_short, copy_long, body, cta) VALUES
-('en', 'tr_sun_moon_harmony', 'sun_trine_moon', '["general", "selfcare"]', 
+('en', 'tr_sun_moon_harmony', 'sun_trine_moon', '["general", "selfcare"]',
  'Inner needs and outer tasks don''t clash today—they complement each other. A good day for gentle planning.',
  'Today the Sun and Moon form a harmonious aspect—one of those days when your inner needs and outer tasks don''t conflict. It''s a good time to outline plans for the coming week or just breathe out and do something for yourself.
 

@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Add more variants for popular transits across all locales
 -- =============================================================================
--- 
+--
 -- This script adds 2-3 additional variants for the most popular transits
 -- to increase variety and avoid repetition in daily digests.
 --

@@ -28,9 +28,10 @@ except ImportError:  # pragma: no cover
 class GeoPoint:
     """
     Результат геокодинга (Nominatim и т.п.).
-    
+
     DEPRECATED: используйте app.services.geocoder.GeoResult вместо этого.
     """
+
     lat: float
     lon: float
     display_name: Optional[str] = None
@@ -51,7 +52,7 @@ def _get_tf() -> Optional["TimezoneFinder"]:
 def geocode_place_nominatim(query: str) -> Optional[GeoPoint]:
     """
     DEPRECATED: используйте app.services.geocoder вместо этого.
-    
+
     Эта функция сохранена только для обратной совместимости с тестами.
     В новом коде используйте:
         from app.services.geocoder import get_geocoder_service
@@ -120,7 +121,7 @@ def resolve_place_to_coords_and_tz(
 ) -> tuple[Optional[GeoPoint], Optional[str]]:
     """
     DEPRECATED: используйте app.services.geocoder вместо этого.
-    
+
     Сохранено для обратной совместимости с тестами.
     """
     gp = geocode_place_nominatim(place)
