@@ -76,6 +76,29 @@ def _normalize_tags(raw: Optional[Sequence[str]]) -> List[str]:
     return sorted({str(x).strip() for x in raw if str(x).strip()})
 
 
+# В сидах отношения часто помечены "love"; интерес пользователя — "relationships".
+# При поиске атомов считаем их эквивалентными.
+USER_INTEREST_TO_PERSONA: dict[str, list[str]] = {
+    "relationships": ["relationships", "love"],
+}
+
+
+def _interests_to_query_personas(interests: Optional[Sequence[str]]) -> List[str]:
+    """Превращает интересы пользователя в список тегов для запроса (с учётом love/relationships)."""
+    if not interests:
+        return []
+    out: set[str] = set()
+    for x in interests:
+        s = str(x).strip().lower()
+        if not s:
+            continue
+        out.add(s)
+        if s in USER_INTEREST_TO_PERSONA:
+            for alias in USER_INTEREST_TO_PERSONA[s]:
+                out.add(alias)
+    return sorted(out)
+
+
 def transit_to_atom_query(
     transit: models.TransitEvent,
     user_profile: Optional[UserProfile] = None,
@@ -96,7 +119,7 @@ def transit_to_atom_query(
     persona_tags = _normalize_tags(payload.get("persona_tags"))
 
     if not persona_tags and user_profile and user_profile.interests:
-        persona_tags = _normalize_tags(user_profile.interests)
+        persona_tags = _interests_to_query_personas(user_profile.interests)
 
     locale = getattr(user_profile, "locale", "en")
 
@@ -122,7 +145,7 @@ def global_event_to_atom_query(
 
     persona_tags: List[str] = []
     if user_profile and user_profile.interests:
-        persona_tags = _normalize_tags(user_profile.interests)
+        persona_tags = _interests_to_query_personas(user_profile.interests)
 
     locale = getattr(user_profile, "locale", "en")
 
@@ -151,7 +174,7 @@ def event_to_atom_query(
 
     persona_tags: List[str] = []
     if user_profile and user_profile.interests:
-        persona_tags = _normalize_tags(user_profile.interests)
+        persona_tags = _interests_to_query_personas(user_profile.interests)
 
     locale = getattr(user_profile, "locale", "en")
 
@@ -213,8 +236,11 @@ def _semantic_score_atom_for_query(
     Чисто семантический скор по совпадению триггера и тегов.
 
     +1.0  — если совпал trigger
-    +0.3  — за каждое пересечение persona_tags
+    +0.7  — за каждое пересечение persona_tags (усилен для учёта интересов)
+    +1.0  — бонус за покрытие всех интересов пользователя (coverage_ratio)
+    +1.5  — эксклюзивный match (атом точно соответствует интересам пользователя)
     +0.2  — за каждое пересечение house_tags
+    +0.5  — бонус за "general" тег (универсальный контент)
     """
     score = 0.0
 
@@ -222,11 +248,38 @@ def _semantic_score_atom_for_query(
     if atom.trigger and query.trigger and atom.trigger == query.trigger:
         score += 1.0
 
-    # 2) Пересечение persona_tags
+    # 2) Пересечение persona_tags (увеличен коэффициент с 0.3 до 0.7)
     atom_personas = set(_normalize_tags(atom.persona_tags))
     query_personas = set(query.persona_tags)
+
     if atom_personas and query_personas:
-        score += 0.3 * len(atom_personas & query_personas)
+        matched_personas = atom_personas & query_personas
+        matched_count = len(matched_personas)
+
+        # Базовый score за совпадения
+        score += 0.7 * matched_count
+
+        # Бонус за coverage (чем больше интересов пользователя покрыто, тем лучше)
+        total_user_interests = len(query_personas)
+        if total_user_interests > 0:
+            coverage_ratio = matched_count / total_user_interests
+            score += 1.0 * coverage_ratio  # до +1.0 за полное покрытие
+
+        # Эксклюзивный match: атом содержит ТОЛЬКО интересы пользователя (и "general")
+        # Это означает, что атом идеально подходит для этого пользователя
+        atom_personas_clean = atom_personas - {
+            "general"
+        }  # убираем "general" для проверки
+        query_personas_clean = query_personas - {"general"}
+
+        if query_personas_clean and atom_personas_clean:
+            # Если атом содержит ТОЛЬКО интересы пользователя (без лишних тегов)
+            if atom_personas_clean <= query_personas_clean:  # subset или equal
+                score += 1.5  # сильный бонус за эксклюзивность
+
+    # Бонус за "general" — универсальный контент, который подходит всем
+    if "general" in atom_personas:
+        score += 0.5
 
     # 3) Пересечение house_tags
     atom_houses = set(_normalize_tags(atom.house_tags))
@@ -249,21 +302,119 @@ def _find_atoms_for_query(
     - сначала пробуем locale из запроса (query.locale, нормализуем в lower),
     - если ничего не нашли и locale != DEFAULT_LOCALE — пробуем DEFAULT_LOCALE,
     - внутри каждой локали:
-        * если указан trigger — сначала ищем точное совпадение (case-insensitive),
-        * если нет точных совпадений — берём все атомы этой локали.
+        * ПРИОРИТЕТ 1: атомы с совпадением trigger И persona_tags
+        * ПРИОРИТЕТ 2: атомы с совпадением только trigger
+        * ПРИОРИТЕТ 3: атомы с совпадением только persona_tags
+        * ПРИОРИТЕТ 4: все атомы локали (fallback)
     Возвращаем список (atom, sem_score), отсортированный по семантическому скору.
     """
 
     def _run_for_locale(locale: str) -> List[models.ContentAtom]:
-        q = db.query(models.ContentAtom).filter(models.ContentAtom.locale == locale)
+        base_q = db.query(models.ContentAtom).filter(
+            models.ContentAtom.locale == locale
+        )
 
+        # Приоритет 1: trigger + persona_tags
+        # Используем Python-фильтрацию для надёжности (JSONB оператор ?| проблематичен)
+        if query.trigger and query.persona_tags:
+            trig = query.trigger.lower()
+            trigger_match = base_q.filter(
+                sa.func.lower(models.ContentAtom.trigger) == trig
+            ).all()
+
+            if trigger_match:
+                # Фильтруем по persona_tags в Python
+                query_personas_set = set(query.persona_tags)
+                filtered = []
+                for atom in trigger_match:
+                    atom_personas = set(_normalize_tags(atom.persona_tags))
+                    if atom_personas & query_personas_set:
+                        filtered.append(atom)
+
+                if filtered:
+                    logger.debug(
+                        "[RAG] Found %d atoms with trigger=%s AND persona_tags overlap for locale=%s",
+                        len(filtered),
+                        query.trigger,
+                        locale,
+                    )
+                    return filtered
+
+        # Приоритет 2: только trigger
         if query.trigger:
             trig = query.trigger.lower()
-            primary = q.filter(sa.func.lower(models.ContentAtom.trigger) == trig).all()
-            if primary:
-                return primary
+            trigger_match = base_q.filter(
+                sa.func.lower(models.ContentAtom.trigger) == trig
+            ).all()
+            if trigger_match:
+                logger.debug(
+                    "[RAG] Found %d atoms with trigger=%s for locale=%s",
+                    len(trigger_match),
+                    query.trigger,
+                    locale,
+                )
+                return trigger_match
 
-        return q.all()
+        # Приоритет 3: только persona_tags (если нет trigger match)
+        if query.persona_tags:
+            logger.debug("[RAG] Filtering by persona_tags in Python")
+            all_atoms = base_q.all()
+            persona_match = []
+            query_personas_set = set(query.persona_tags)
+            for atom in all_atoms:
+                atom_personas = set(_normalize_tags(atom.persona_tags))
+                if atom_personas & query_personas_set:
+                    persona_match.append(atom)
+
+            if persona_match:
+                logger.debug(
+                    "[RAG] Found %d atoms with persona_tags overlap for locale=%s",
+                    len(persona_match),
+                    locale,
+                )
+                return persona_match[: max_atoms * 2]
+
+        # Приоритет 4: атомы с "general" persona_tag (исключаем test-атомы)
+        # Сначала пробуем найти атомы с тегом "general"
+        all_atoms = base_q.all()
+
+        # Фильтруем: убираем test-атомы (ml_test_tag, test_*)
+        filtered_atoms = []
+        general_atoms = []
+
+        for atom in all_atoms:
+            # Пропускаем test-атомы
+            topic = (atom.topic_tag or "").lower()
+            trigger = (atom.trigger or "").lower()
+
+            if "test" in topic or "test" in trigger:
+                continue
+
+            # Разделяем на "general" и остальные
+            persona_tags = set(_normalize_tags(atom.persona_tags))
+            if "general" in persona_tags:
+                general_atoms.append(atom)
+            else:
+                filtered_atoms.append(atom)
+
+        # Приоритет: сначала general, потом остальные
+        result = general_atoms + filtered_atoms
+
+        if result:
+            logger.debug(
+                "[RAG] Fallback: returning %d atoms (general: %d, other: %d) for locale=%s",
+                len(result),
+                len(general_atoms),
+                len(filtered_atoms),
+                locale,
+            )
+            return result[: max_atoms * 2]
+
+        # Крайний fallback: если совсем ничего нет (даже test-атомов нет) — возвращаем пустой список
+        logger.warning(
+            "[RAG] No suitable atoms found for locale=%s (even after fallback)", locale
+        )
+        return []
 
     # Нормализуем locale и делаем fallback на DEFAULT_LOCALE
     base_locale = (query.locale or DEFAULT_LOCALE).lower()
@@ -271,6 +422,11 @@ def _find_atoms_for_query(
     candidates = _run_for_locale(base_locale)
 
     if not candidates and base_locale != DEFAULT_LOCALE:
+        logger.info(
+            "[RAG] No atoms for locale=%s, trying DEFAULT_LOCALE=%s",
+            base_locale,
+            DEFAULT_LOCALE,
+        )
         candidates = _run_for_locale(DEFAULT_LOCALE)
 
     # Семантический скор + сортировка
@@ -280,6 +436,14 @@ def _find_atoms_for_query(
         scored.append((atom, sem_score))
 
     scored.sort(key=lambda x: x[1], reverse=True)
+
+    logger.debug(
+        "[RAG] Scored %d candidate atoms, returning top %d (max_score=%.2f)",
+        len(scored),
+        min(len(scored), max_atoms),
+        scored[0][1] if scored else 0.0,
+    )
+
     return scored[:max_atoms]
 
 
@@ -335,6 +499,8 @@ def select_general_day_atoms(
         "relationships": "day_love_vibes",
         "selfcare": "day_selfcare_nervous_system",
         "health": "day_selfcare_nervous_system",
+        "learning": "day_general_balance",
+        "creativity": "day_general_balance",
     }
 
     seen_topics: set[str] = set()
@@ -412,24 +578,51 @@ def select_atoms_for_day(
       - семантический скор,
       - strength события (если передан в payload["strength"]).
     """
+    logger.info(
+        "[RAG] select_atoms_for_day START: user_id=%s day=%s max_total_atoms=%s",
+        user_id,
+        day,
+        max_total_atoms,
+    )
+
     if user_profile is None:
         user_profile = UserProfile(locale="en")
 
-        # 1. Транзиты из events (precompute)
+    # Логируем профиль пользователя для отладки
+    logger.info(
+        "[RAG] User profile: locale=%s, interests=%s, preferred_length=%s",
+        user_profile.locale,
+        user_profile.interests,
+        user_profile.preferred_length,
+    )
+
+    # 1. Транзиты из events (precompute)
     transit_events = _load_digest_transit_events_for_day(db, user_id=user_id, day=day)
+
+    logger.info(
+        "[RAG] Loaded %d precomputed transit events from DB for user_id=%s day=%s",
+        len(transit_events),
+        user_id,
+        day,
+    )
 
     # fallback: если precompute не запускался — считаем на лету
     # и ОДНОВРЕМЕННО сохраняем события в БД, чтобы в следующий раз читать их как precompute
     if not transit_events:
         logger.info(
-            "[RAG] Fallback compute_daily_digest_transits for user=%s day=%s",
+            "[RAG] No precomputed events found. Computing transit aspects on-the-fly for user_id=%s day=%s",
             user_id,
             day,
         )
 
         aspects = compute_daily_digest_transits(db, user_id=user_id, local_date=day)
 
-        logger.info("[RAG] Got %d aspects from transit_service", len(aspects))
+        logger.info(
+            "[RAG] Computed %d transit aspects from transit_service for user_id=%s day=%s",
+            len(aspects),
+            user_id,
+            day,
+        )
 
         transit_events = []
         for a in aspects:
@@ -455,28 +648,63 @@ def select_atoms_for_day(
             db.add(ev)
             transit_events.append(ev)
 
-        # аккуратно пытаемся зафлашить, чтобы id сразу появились,
-        # но не ломаем дайджест, если вдруг БД ругнётся
+        # ВАЖНО: коммитим события в БД, чтобы они сохранились для будущих вызовов
         try:
-            db.flush()
-        except Exception:
-            pass
+            db.commit()
+            logger.info(
+                "[RAG] Committed %d transit events to DB for user=%s day=%s",
+                len(transit_events),
+                user_id,
+                day,
+            )
+        except Exception as e:
+            logger.error(
+                "[RAG] Failed to commit transit events: %s",
+                e,
+                exc_info=True,
+            )
+            # откат, чтобы не сломать сессию
+            db.rollback()
 
     # 2. Глобальные события (stub-фазы Луны)
     global_events = compute_global_events(day, day)
+    logger.info("[RAG] Found %d global events for day=%s", len(global_events), day)
 
     selected: List[SelectedAtom] = []
 
     # 3. Транзиты (events)
     for ev in transit_events:
         q = event_to_atom_query(ev, user_profile=user_profile)
+        logger.debug(
+            "[RAG] Query for event %d: trigger=%s, persona_tags=%s",
+            ev.id,
+            q.trigger,
+            q.persona_tags,
+        )
+
         candidates = _find_atoms_for_query(db, q, max_atoms=2)
 
         details = ev.details or {}
         strength = _strength_from_transit_details(details)
 
+        logger.debug(
+            "[RAG] Event %d: found %d candidate atoms, strength=%.2f",
+            ev.id,
+            len(candidates),
+            strength,
+        )
+
         for atom, sem_score in candidates:
             total_score = sem_score + strength
+            logger.debug(
+                "[RAG] Atom %d (trigger=%s, persona_tags=%s): sem_score=%.2f, strength=%.2f, total=%.2f",
+                atom.id,
+                atom.trigger,
+                atom.persona_tags,
+                sem_score,
+                strength,
+                total_score,
+            )
             selected.append(
                 SelectedAtom(
                     atom=atom,
@@ -490,13 +718,33 @@ def select_atoms_for_day(
     # 4. Глобальные события
     for ge in global_events:
         q = global_event_to_atom_query(ge, user_profile=user_profile)
+        logger.debug(
+            "[RAG] Query for global event %s: trigger=%s, persona_tags=%s",
+            ge.kind,
+            q.trigger,
+            q.persona_tags,
+        )
+
         candidates = _find_atoms_for_query(db, q, max_atoms=1)
 
         # для глобальных событий возьмём фиксированную силу 0.6
         strength = 0.6
 
+        logger.debug(
+            "[RAG] Global event %s: found %d candidate atoms, strength=%.2f",
+            ge.kind,
+            len(candidates),
+            strength,
+        )
+
         for atom, sem_score in candidates:
             total_score = sem_score + strength
+            logger.debug(
+                "[RAG] Atom %d for global event: sem_score=%.2f, total=%.2f",
+                atom.id,
+                sem_score,
+                total_score,
+            )
             selected.append(
                 SelectedAtom(
                     atom=atom,
@@ -505,6 +753,8 @@ def select_atoms_for_day(
                     global_event=ge,
                 )
             )
+
+    logger.info("[RAG] Total selected atoms before dedup: %d", len(selected))
 
     # 5. Дедуп по atom.id — оставляем вариант с максимальным score
     dedup: dict[int, SelectedAtom] = {}
@@ -515,9 +765,12 @@ def select_atoms_for_day(
             dedup[atom_id] = item
 
     final_atoms = list(dedup.values())
+    logger.info("[RAG] After dedup: %d unique atoms", len(final_atoms))
+
     if not final_atoms:
         # нет подходящих атомов — день считается тихим,
         # text_generation вернёт спокойный дефолтный текст
+        logger.info("[RAG] No atoms found, returning empty list (quiet day)")
         return []
 
     final_atoms.sort(key=lambda a: a.score, reverse=True)
@@ -527,6 +780,34 @@ def select_atoms_for_day(
     # даём text_generation с дефолтным тихим текстом.
     max_score = final_atoms[0].score
     if max_score < quiet_day_threshold:
+        logger.info(
+            "[RAG] Quiet day detected: max_score=%.2f < threshold=%.2f for user_id=%s day=%s",
+            max_score,
+            quiet_day_threshold,
+            user_id,
+            day,
+        )
         return []
 
-    return final_atoms[:max_total_atoms]
+    # Логируем топ атомы
+    logger.info("[RAG] Top atoms (scores):")
+    for i, atom in enumerate(final_atoms[:max_total_atoms], 1):
+        logger.info(
+            "  %d. Atom %d (trigger=%s, persona_tags=%s): score=%.2f",
+            i,
+            atom.atom.id,
+            atom.atom.trigger,
+            atom.atom.persona_tags,
+            atom.score,
+        )
+
+    result = final_atoms[:max_total_atoms]
+    logger.info(
+        "[RAG] select_atoms_for_day DONE: returning %d atoms for user_id=%s day=%s (max_score=%.2f)",
+        len(result),
+        user_id,
+        day,
+        max_score,
+    )
+
+    return result

@@ -1,58 +1,70 @@
 {
   "tg": {
     "age_gate": {
-      "question": "Hi! I’m *AstroDaily* bot 🌌\n\nBefore we start, I need to confirm that you are *18+* and that you understand this is *not a medical, financial or legal service* and is provided *for entertainment purposes only*.\n\nDo you confirm that you are 18+ and agree with this?",
-      "yes_btn": "✅ Yes, I’m 18+",
+      "question": "Hi! I'm *AstroDaily* bot 🌌\n\nBefore we start, I need to confirm that you are *18+* and that you understand this is *not a medical, financial or legal service* and is provided *for entertainment purposes only*.\n\nDo you confirm that you are 18+ and agree with this?",
+      "yes_btn": "✅ Yes, I'm 18+",
       "no_btn": "❌ No",
-      "accepted": "Thank you! ✅\n\nLet’s set up your profile.\nPlease send your birth date in format *DD.MM.YYYY*.",
+      "accepted": "Thank you! ✅\n\nLet's set up your profile.\nPlease send your birth date in format *DD.MM.YYYY*.",
       "declined": "Understood. AstroDaily is available only for users 18+.\nIf this was a mistake, you can send /start again later."
     },
     "start": {
-      "ask_birth_date": "Let’s set up your profile.\nPlease send your birth date in format *DD.MM.YYYY*.",
-      "welcome": "Hi! I’m your *{bot_name}* bot.\n\nI’ll compute your natal chart and today’s transits and send you a short AI-powered astro digest based on your birth data and current sky events.\n\nUse /today to get your digest for today.\nUse /snooze to pause/resume daily delivery.\nUse /help to see what I can do and all commands."
+      "ask_birth_date": "Let's set up your profile.\nPlease send your birth date in format *DD.MM.YYYY*.",
+      "welcome": "Hi! I'm your *{bot_name}* bot.\n\nI'll compute your natal chart and today's transits and send you a short AI-powered astro digest based on your birth data and current sky events.\n\nUse /today to get your digest for today.\nUse /settings to customize your preferences.\nUse /help to see what I can do and all commands."
     },
     "help": {
-      "basic": "I understand /start, /today and /snooze for now 🙂",
-      "full": "I’m *AstroDaily* — a daily astrology digest powered by AI.\n\nWhat I can do:\n• compute your natal chart and transits based on birth date, time and place;\n• build a short forecast for today from the most important aspects;\n• gently highlight today’s themes: work, relationships, money, self-care;\n• show your plan (/plan) and which features are available.\n\nMain commands:\n• /start — start or restart onboarding;\n• /today — daily digest for today;\n• /snooze — pause / resume delivery;\n• /plan — see your current plan and features;\n• /upgrade — learn how to get more features;\n• /help — short help about the bot and commands.\n\n_Note: I don’t provide medical, financial or legal advice. This is an informational and entertainment service._"
+      "basic": "I understand /start, /continue, /today and /settings for now 🙂",
+      "full": "I'm *AstroDaily* — a daily astrology digest powered by AI.\n\nWhat I can do:\n• compute your natal chart and transits based on birth date, time and place;\n• build a short forecast for today from the most important aspects;\n• gently highlight today's themes: work, relationships, money, self-care;\n• show your plan (/plan) and which features are available.\n\nMain commands:\n• /start — start onboarding from scratch;\n• /continue — resume interrupted onboarding;\n• /today — daily digest for today;\n• /settings — customize all preferences;\n• /plan — see your current plan and features;\n• /upgrade — learn how to get more features;\n• /help — short help about the bot and commands.\n\n_Note: I don't provide medical, financial or legal advice. This is an informational and entertainment service._"
+    },
+    "location": {
+      "unexpected": "Thanks for sharing your location, but it's not needed anymore 🙂\n\nYour profile is set up. Use /today for your daily digest or /settings for preferences."
     },
     "onboarding": {
       "birth_date_invalid": "Please send your birth date in format *DD.MM.YYYY*, for example *12.10.1980*.",
-      "birth_time_prompt": "Got it ✅\n\nNow send your birth time in format *HH:MM* (24h), or type *Don’t know* if you’re not sure.",
-      "birth_time_invalid": "Please send your birth time in format *HH:MM* (for example *07:30*), or type *Don’t know*.",
-      "birth_place_prompt": "Thanks! 🙌\nNow type your *place of birth* — city and country, for example: *\"Kyiv, Ukraine\"*.",
+      "birth_time_prompt": "Got it ✅\n\nNow send your birth time in format *HH:MM* (24h), or type *Don't know* if you're not sure.",
+      "birth_time_invalid": "Please send your birth time in format *HH:MM* (for example *07:30*), or type *Don't know*.",
+      "birth_place_prompt": "Thanks! 🙌\nNow type your *place of birth* — city and country.\n\nFor example: *\"Kyiv, Ukraine\"* or *\"New York, USA\"*.",
       "birth_place_empty": "Please enter your place of birth, e.g. *\"Kyiv, Ukraine\"*.",
-      "prefs_topics_prompt": "Before we start, tell me what you’re most interested in right now:\n1) Work & projects\n2) Relationships & people\n3) Money & resources\n4) Self-care & energy\n\nSend the numbers separated by commas, for example: *1,3* or *2 4*.",
-      "prefs_topics_invalid": "I didn’t quite catch that 🤔\nPlease send the numbers from 1 to 4, for example: *1,3* or *2 4*.",
+      "timezone_location_prompt": "For accurate astrology, we need your current timezone.\n\nPress the button below to share your device location, or press 'Skip'.",
+      "timezone_location_btn": "📍 Share location",
+      "timezone_location_skip": "Skip",
+      "timezone_saved": "Timezone saved: *{timezone}* ✅",
+      "prefs_topics_prompt": "Before we start, tell me what you're most interested in right now:\n1) Work & projects\n2) Relationships & people\n3) Money & resources\n4) Self-care & energy\n5) Learning & growth\n6) Creativity & self-expression\n\nSend the numbers separated by commas, for example: *1,3* or *2 4 5*.",
+      "prefs_topics_invalid": "I didn't quite catch that 🤔\nPlease send the numbers from 1 to 6, for example: *1,3,5* or *2 4*.",
       "prefs_delivery_prompt": "How long do you prefer your daily digest?\n1) Short — 1–2 short paragraphs\n2) Medium — some more detail\n3) Deep dive — longer, with more nuance\n\nSend *1*, *2* or *3*.",
       "prefs_delivery_invalid": "Please choose *1*, *2* or *3* so I can adjust the length of your digest.",
-      "complete": "Great, your birth data is saved ✅\n\nNow you can use /today to get your daily digest, or /snooze to pause notifications."
+      "complete": "Great, your birth data is saved ✅\n\nNow you can use /today to get your daily digest, or /settings to customize your preferences.",
+      "incomplete": "Please complete your profile setup first.\n\nUse /continue to resume onboarding."
+    },
+    "continue": {
+      "already_complete": "Onboarding is already complete! ✅\n\nYou can use /today for your digest or /settings for preferences.",
+      "unknown_state": "Something went wrong with onboarding.\n\nTry starting fresh with /start."
     },
     "today": {
-      "failed": "I couldn’t build your digest for today. Please try again later.",
+      "failed": "I couldn't build your digest for today. Please try again later.",
       "affirmation_label": "Affirmation:"
     },
     "snooze": {
-      "paused": "⏸ Daily delivery *paused*.\nSend /snooze again to resume your digests.",
-      "resumed": "▶️ Daily delivery *resumed*.\nYou’ll start receiving digests again."
+      "paused": "⏸ Daily delivery *paused*.\n\nYou can manage delivery settings in /settings anytime.",
+      "resumed": "▶️ Daily delivery *resumed*.\n\nYou can adjust delivery time and other preferences in /settings."
     },
     "feedback": {
       "like_btn": "👍 Like",
       "dislike_btn": "👎 Not for me",
       "hide_btn": "🙈 Hide topic",
       "like_ack": "Got it 👍 Thanks for your feedback!",
-      "dislike_ack": "Got it 👎 I’ll try to adjust future digests.",
-      "hide_ack": "Okay 🙈 I’ll try to show less of this topic.",
+      "dislike_ack": "Got it 👎 I'll try to adjust future digests.",
+      "hide_ack": "Okay 🙈 I'll try to show less of this topic.",
       "generic_ack": "Thanks for your feedback!"
     },
     "upgrade": {
-      "summary": "Paid plans are still being wired up.\n\nSoon you’ll be able to upgrade via Stripe right inside the chat.\n\nFor now, if you want to test paid plans, just message support and tell us which plan you’re interested in:\n• Daily Focus — extended daily digest (≈ $0.99/month)\n• Full — digest + strong alerts + calendar (≈ $4.99/month).\n\nAfter payment we will enable the plan manually and notify you in Telegram.",
-      "already_full": "You are already on the full plan. If you are missing something in the bot, message support and we’ll be happy to build it."
+      "summary": "Paid plans are still being wired up.\n\nSoon you'll be able to upgrade via Stripe right inside the chat.\n\nFor now, if you want to test paid plans, just message support and tell us which plan you're interested in:\n• Daily Focus — extended daily digest (≈ $0.99/month)\n• Full — digest + strong alerts + calendar (≈ $4.99/month).\n\nAfter payment we will enable the plan manually and notify you in Telegram.\n\n💡 You can also manage your plan through /settings.",
+      "already_full": "You are already on the full plan. If you are missing something in the bot, message support and we'll be happy to build it.\n\n💡 You can review your plan features in /settings."
     },
     "rate_limit": "Too many requests. Try again in {seconds}s.",
     "plan": {
       "current": "Your current plan: *{plan_name}*",
       "features": "You get:\n{features}",
-      "upgrade_hint": "To unlock more features, use /upgrade.",
+      "upgrade_hint": "To unlock more features, use /upgrade or /settings.",
       "name": {
         "demo": "Demo",
         "daily": "Daily Focus",
@@ -68,7 +80,7 @@
       }
     },
     "settings": {
-      "summary": "*Your profile settings:*\n\n• Language: {language}\n• Plan: {plan_name}\n• Timezone: {timezone}\n• Delivery time: {delivery_time}\n• Delivery: {delivery_status}\n\nUse the buttons below to change these settings.",
+      "summary": "*Your profile settings:*\n\n📱 *Interface*\n• Language: {language}\n• Plan: {plan_name}\n\n🚀 *Delivery*\n• Status: {delivery_status}\n• Time: {delivery_time}\n\n🌟 *Birth Data*\n• Date: {birth_date}\n• Time: {birth_time}\n• Place: {birth_place}\n\n🎯 *Digest Preferences*\n• Interests: {interests}\n• Length: {length}\n\nUse the buttons below to change these settings.",
       "lang": {
         "en": "English",
         "ru": "Russian",
@@ -78,11 +90,6 @@
         "choose": "Choose your language:",
         "changed": "Language updated to *{language}*."
       },
-      "timezone": {
-        "not_set": "Not set",
-        "choose": "Choose your timezone:",
-        "changed": "Timezone updated to *{timezone}*."
-      },
       "delivery_time": {
         "not_set": "Not set",
         "choose": "Choose your daily digest time:",
@@ -90,12 +97,47 @@
       },
       "delivery": {
         "enabled": "Enabled",
-        "disabled": "Disabled"
+        "disabled": "Disabled",
+        "submenu": "*Delivery settings:*\n\nStatus: {status}\nTime: {time}\n\nUse the buttons below to change delivery settings.",
+        "toggle_on": "Turn ON delivery",
+        "toggle_off": "Turn OFF delivery",
+        "change_time": "Change delivery time",
+        "toggled_on": "✅ Daily delivery *enabled*.\n\nYou'll receive digests at {time}.",
+        "toggled_off": "⏸ Daily delivery *paused*.\n\nUse /settings to resume anytime."
+      },
+      "interests": {
+        "prompt": "*Choose topics that matter to you:*\n\nSelect one or more areas:\n\n{options}\n\nCurrent selection: {current}",
+        "work": "💼 Work & projects",
+        "relationships": "❤️ Relationships & people",
+        "money": "💰 Money & resources",
+        "selfcare": "🧘 Self-care & energy",
+        "learning": "🎓 Learning & growth",
+        "creativity": "✨ Creativity & self-expression",
+        "updated": "✅ Your interests updated.\n\nSelected: {interests}"
+      },
+      "length": {
+        "prompt": "*Choose your digest length:*\n\nHow detailed should your daily digest be?",
+        "short": "📝 Short (1-2 paragraphs)",
+        "medium": "📄 Medium (balanced detail)",
+        "long": "📚 Detailed (in-depth)",
+        "updated": "✅ Digest length updated to *{length}*."
+      },
+      "edit": {
+        "birth_date_prompt": "⚠️ *Changing birth date will recalculate your natal chart.*\n\nSend your new birth date in format *DD.MM.YYYY*.",
+        "birth_time_prompt": "⚠️ *Changing birth time will recalculate your natal chart.*\n\nSend your new birth time in format *HH:MM* or type *Don't know*.",
+        "birth_place_prompt": "⚠️ *Changing birth place will recalculate your natal chart and timezone.*\n\nSend your new place of birth (city, country).",
+        "saved": "✅ Data updated and natal chart recalculated.\n\nBack to /settings to see other options.",
+        "cancelled": "Edit cancelled. Back to /settings."
       },
       "btn": {
-        "language": "Language",
-        "timezone": "Timezone",
-        "delivery_time": "Delivery time"
+        "language": "🌐 Language",
+        "delivery": "📬 Delivery",
+        "interests": "🎯 Interests",
+        "birth_date": "📅 Birth Date",
+        "birth_time": "🕐 Birth Time",
+        "birth_place": "📍 Birth Place",
+        "length": "📏 Digest Length",
+        "upgrade": "⭐ Upgrade Plan"
       }
     }
   },

@@ -10,11 +10,19 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
       - ./:/app
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
 
   db:
     image: postgres:16
@@ -27,6 +35,30 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astrodaily -d astrodaily"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Nominatim для geocoding (опционально, можно использовать nominatim.org)
+  # Раскомментируйте для self-hosted geocoding
+  # nominatim:
+  #   image: mediagis/nominatim:4.4
+  #   container_name: astrodaily_nominatim
+  #   environment:
+  #     - PBF_URL=https://download.geofabrik.de/europe/ukraine-latest.osm.pbf
+  #     - REPLICATION_URL=https://download.geofabrik.de/europe/ukraine-updates/
+  #     - IMPORT_WIKIPEDIA=false
+  #     - NOMINATIM_PASSWORD=astrodaily
+  #   ports:
+  #     - "8081:8080"
+  #   volumes:
+  #     - nominatim-data:/var/lib/postgresql/14/main
+  #   restart: unless-stopped
+  #   shm_size: 1gb
 
 volumes:
   pgdata:
+  # nominatim-data:  # Раскомментируйте если используете nominatim контейнер

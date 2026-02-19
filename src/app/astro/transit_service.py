@@ -31,8 +31,27 @@ def compute_transit_aspects_for_local_date(
     orb_deg: float,
     include_moon: bool = True,
 ) -> List[TransitAspectEvent]:
+    """
+    Вычисляет транзитные аспекты для пользователя на указанную локальную дату.
+
+    1. Получаем натальную карту (с кэшированием)
+    2. Вычисляем позиции транзитных планет на полдень локальной даты
+    3. Находим аспекты между транзитными и натальными планетами
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     user = db.query(models.User).filter(models.User.id == user_id).one()
     tzid = user.timezone or "UTC"
+
+    logger.info(
+        "[TRANSIT] Computing aspects for user_id=%s local_date=%s tzid=%s orb=%.1f",
+        user_id,
+        local_date,
+        tzid,
+        orb_deg,
+    )
 
     # BirthData берём по user_id (если у тебя связь другая — скажи, поправлю)
     birth = db.query(models.BirthData).filter(models.BirthData.user_id == user_id).one()
@@ -40,15 +59,36 @@ def compute_transit_aspects_for_local_date(
     natal = get_or_compute_natal(db, birth)
     natal_lon = {name: pos.lon for name, pos in natal.bodies.items()}
 
+    logger.info(
+        "[TRANSIT] Got natal chart with %d bodies for user_id=%s",
+        len(natal_lon),
+        user_id,
+    )
+
     dt_utc = _local_noon_to_utc(local_date, tzid)
 
     transit_bodies = compute_all_bodies(dt_utc=dt_utc)  # геоцентрически
     transit_lon = {name: pos.lon for name, pos in transit_bodies.items()}
 
+    logger.info(
+        "[TRANSIT] Computed transit positions for %d bodies at %s UTC",
+        len(transit_bodies),
+        dt_utc.isoformat(),
+    )
+
     if not include_moon:
         transit_lon.pop("moon", None)
 
-    return detect_transit_aspects(transit_lon, natal_lon, orb_deg=orb_deg)
+    aspects = detect_transit_aspects(transit_lon, natal_lon, orb_deg=orb_deg)
+
+    logger.info(
+        "[TRANSIT] Found %d transit aspects for user_id=%s local_date=%s",
+        len(aspects),
+        user_id,
+        local_date,
+    )
+
+    return aspects
 
 
 def compute_daily_digest_transits(db: Session, *, user_id: int, local_date: date):
