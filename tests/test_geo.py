@@ -1,6 +1,9 @@
 from datetime import date
 
+import pytest
+
 from app.geo import (
+    GeoPoint,
     tz_by_latlon,
     resolve_place_to_coords_and_tz,
     build_utc_datetime_for_local_day,
@@ -14,7 +17,14 @@ def test_tz_by_latlon_known_cities():
     assert tz_by_latlon(50.4501, 30.5234) == "Europe/Kyiv"
 
 
-def test_resolve_place_to_coords_and_tz_offline_map():
+def test_resolve_place_to_coords_and_tz_offline_map(monkeypatch):
+    """resolve_place_to_coords_and_tz использует geocode (заглушка возвращает None); мокаем для проверки tz."""
+    # Координаты Киева; geocode_place_nominatim в app.geo — заглушка (всегда None), поэтому мокаем
+    stub_point = GeoPoint(50.4501, 30.5234, "Kyiv")
+    monkeypatch.setattr(
+        "app.geo.geocode_place_nominatim",
+        lambda q: stub_point if q == "Kyiv" else None,
+    )
     gp, tzid = resolve_place_to_coords_and_tz("Kyiv")
     assert gp is not None
     assert tzid == "Europe/Kyiv"
