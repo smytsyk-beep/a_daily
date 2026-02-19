@@ -43,6 +43,13 @@ class TTLCache(Generic[T]):
         for k in dead:
             self._store.pop(k, None)
 
+    def delete_by_prefix(self, prefix: str) -> int:
+        """Remove all keys starting with prefix. Returns count removed."""
+        to_remove = [k for k in self._store if k.startswith(prefix)]
+        for k in to_remove:
+            self._store.pop(k, None)
+        return len(to_remove)
+
 
 @dataclass(slots=True)
 class RateLimitResult:

@@ -105,15 +105,26 @@ def test_telegram_webhook_today_uses_daily_digest_and_sends_buttons(monkeypatch)
 
     tg_id = 12345002
 
-    # заранее создадим пользователя, чтобы не путать этот тест с /start
+    # Пользователь с завершённым онбордингом и timezone, иначе /today вернёт "complete your profile"
     db = SessionLocal()
     try:
         user = (
             db.query(models.User).filter(models.User.tg_user_id == str(tg_id)).first()
         )
         if user is None:
-            user = models.User(tg_user_id=str(tg_id), locale="en")
+            user = models.User(
+                tg_user_id=str(tg_id),
+                locale="en",
+                timezone="Europe/Kyiv",
+                prefs={"onboarding_state": "complete"},
+            )
             db.add(user)
+            db.commit()
+        else:
+            user.timezone = user.timezone or "Europe/Kyiv"
+            user.prefs = user.prefs or {}
+            if isinstance(user.prefs, dict):
+                user.prefs = {**user.prefs, "onboarding_state": "complete"}
             db.commit()
     finally:
         db.close()

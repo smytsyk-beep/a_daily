@@ -57,6 +57,19 @@ class Settings(BaseSettings):
     GOOGLE_GEOCODING_API_KEY: str | None = None
     GOOGLE_GEOCODING_TIMEOUT_S: int = 5
 
+    # --- LLM (Quality Content) ---
+    OPENAI_API_KEY: str | None = None
+    ANTHROPIC_API_KEY: str | None = None
+    LLM_PROVIDER: str = "openai"  # openai | anthropic | ollama
+    LLM_MODEL: str = "gpt-4o-mini"
+    LLM_ENABLED: bool = False  # feature flag
+    LLM_CACHE_TTL_DAYS: int = 7
+    LLM_MAX_DAILY_COST_USD: float = 10.0
+    LLM_MAX_MONTHLY_COST_USD: float = 200.0
+
+    # A/B тест дайджеста: доля пользователей (0–100), которым показываем LLM-рендер при подходящих условиях
+    AB_DIGEST_LLM_PERCENT: int = 50
+
     @property
     def DATABASE_URL(self) -> str:
         """
@@ -71,6 +84,7 @@ class Settings(BaseSettings):
         return (
             f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+            f"?client_encoding=utf8"
         )
 
 

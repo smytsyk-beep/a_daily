@@ -1,0 +1,86 @@
+# ПРОБЛЕМА: Недостаточно атомов с разными persona_tags
+
+## Текущее состояние
+
+В БД есть только 2 транзитных атома для RU:
+
+1. **venus_trine_moon**: `persona_tags=["general", "love", "selfcare"]`
+2. **mars_square_sun**: `persona_tags=["general", "work", "selfcare"]`
+
+**Оба содержат "selfcare"**, поэтому:
+- User 1 (money + selfcare) → получает оба атома по тегу "selfcare"
+- User 2 (только selfcare) → получает оба атома по тегу "selfcare"
+
+**Результат**: одинаковые дайджесты!
+
+## Решение 1: Добавить больше вариантов атомов
+
+Для **каждого транзита** создать **несколько вариантов** с разными `persona_tags`:
+
+```python
+# venus_trine_moon варианты:
+1. persona_tags=["general", "love", "selfcare"]  # существующий
+2. persona_tags=["general", "money", "selfcare"]  # для money-focused
+3. persona_tags=["general", "work", "relationships"]  # для work-focused
+4. persona_tags=["general", "relationships"]  # для relationships-focused
+
+# mars_square_sun варианты:
+1. persona_tags=["general", "work", "selfcare"]  # существующий
+2. persona_tags=["general", "money", "work"]  # для money-focused
+3. persona_tags=["general", "selfcare", "relationships"]  # для selfcare-focused
+```
+
+**Плюсы**:
+- Пользователи с разными интересами получат разные атомы
+- Контент более персонализирован
+
+**Минусы**:
+- Нужно написать больше контента (но можно использовать варианты)
+- Увеличение БД
+
+## Решение 2: Улучшить scoring без новых атомов
+
+Увеличить бонус за **эксклюзивное** совпадение интересов:
+
+```python
+# Текущая логика:
+score += 0.7 * len(matched_tags)  # 0.7 или 1.4
+if all_interests_covered:
+    score += 0.5  # бонус
+
+# Улучшенная логика:
+matched = len(matched_tags)
+total_user = len(query_personas)
+total_atom = len(atom_personas)
+
+# Если у пользователя 1 интерес и атом его покрывает = сильнее
+# Если у пользователя 2 интереса и атом покрывает оба = ещё сильнее
+coverage_ratio = matched / total_user if total_user > 0 else 0
+exclusivity_bonus = 1.0 if matched == total_user == len(matched_tags) else 0.0
+
+score += 0.7 * matched
+score += 1.0 * coverage_ratio  # чем больше покрытие, тем выше
+score += exclusivity_bonus  # эксклюзивный match = +1.0
+```
+
+**Плюсы**:
+- Не нужны новые атомы
+- Работает с текущей БД
+
+**Минусы**:
+- Всё равно будут повторяться атомы, если их мало
+
+## Решение 3: Hybrid (рекомендую)
+
+1. Усилить scoring (Решение 2) — **сделаем сейчас**
+2. Постепенно добавлять новые варианты атомов — **сделаем позже**
+
+Тогда:
+- User с money+selfcare получит атомы с более высоким score, если они лучше покрывают его интересы
+- Но пока атомов мало, будет overlap (это нормально для MVP)
+
+## План действий
+
+1. ✅ Улучшить scoring в `_semantic_score_atom_for_query`
+2. ⏳ Создать seed-скрипт с вариантами атомов (опционально)
+3. ⏳ Протестировать на двух пользователях

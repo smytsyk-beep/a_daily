@@ -79,4 +79,4 @@ jobs:
           PGPORT: "5432"
           PGUSER: astrodaily
           PGPASSWORD: astrodaily
-        run: pytest -q
+        run: pytest -q tests

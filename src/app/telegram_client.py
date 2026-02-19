@@ -48,3 +48,39 @@ def send_message(
             raise TelegramClientError(
                 f"Telegram sendMessage failed: {resp.status_code} {resp.text}"
             )
+
+
+def answer_callback_query(
+    callback_query_id: str,
+    *,
+    text: str | None = None,
+    show_alert: bool = False,
+) -> None:
+    """
+    Подтверждает обработку callback query.
+
+    Обязательно вызывать после обработки callback_data,
+    иначе Telegram будет повторно отправлять callback_query.
+
+    Args:
+        callback_query_id: ID callback query из update
+        text: Опциональный текст для показа пользователю (toast/alert)
+        show_alert: Если True, показывает alert вместо toast
+    """
+    base_url = _get_base_url()
+    url = f"{base_url}/answerCallbackQuery"
+
+    payload: dict = {
+        "callback_query_id": callback_query_id,
+    }
+    if text:
+        payload["text"] = text
+    if show_alert:
+        payload["show_alert"] = True
+
+    with httpx.Client(timeout=5.0) as client:
+        resp = client.post(url, json=payload)
+        if resp.status_code != 200:
+            raise TelegramClientError(
+                f"Telegram answerCallbackQuery failed: {resp.status_code} {resp.text}"
+            )
