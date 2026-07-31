@@ -15,18 +15,16 @@
 ## Current work
 
 - Approved remediation base branch: `main`
-- Current working branch: `docs/34-architecture-adrs`
-- Worktree: documentation-only ADR work in progress for Issue #34
+- Current working branch: none; no implementation issue is selected
+- Worktree: clean after Issue #34 merged into `main`
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12)
-- Current implementation issue:
-  [#34 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/issues/34)
-- Current PR:
-  [#59 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/pull/59)
-- ADR status: `in progress`; four accepted decision records and their canonical
-  index are being prepared without application or configuration changes
+- Current implementation issue: `not selected`
+- Current PR: `none`
+- ADR status: four accepted decision records and their canonical index merged
+  via PR #59
 - Baseline verification: `passed` locally on Windows/Python 3.13 on
   `2026-07-31`; canonical GitHub Actions Python 3.11 run passed on PR #57
 - Disposable database: PostgreSQL `160011`, empty before migrations
@@ -38,8 +36,8 @@
 - Cleanup: generated container, network, `tmpfs`, timezone data, and temporary
   configuration removed and verified
 - Latest merged PR:
-  [#57 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/pull/57)
-- Application or historical migration code changed for Issue #33: `no`
+  [#59 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/pull/59)
+- Application or historical migration code changed for Issue #34: `no`
 
 ## Completed issues
 
@@ -48,6 +46,9 @@
   `2026-07-31`
 - [#33 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/issues/33)
   via [PR #57](https://github.com/smytsyk-beep/a_daily/pull/57), merged
+  `2026-07-31`
+- [#34 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/issues/34)
+  via [PR #59](https://github.com/smytsyk-beep/a_daily/pull/59), merged
   `2026-07-31`
 
 ## Architecture invariants
@@ -102,4 +103,6 @@ drift owned by Issue #15. It verifies disposable resource cleanup.
 - [Architecture Decision Record index](adr/README.md)
 - [Completed implementation issue #32](https://github.com/smytsyk-beep/a_daily/issues/32)
 - [Completed implementation issue #33](https://github.com/smytsyk-beep/a_daily/issues/33)
+- [Completed implementation issue #34](https://github.com/smytsyk-beep/a_daily/issues/34)
 - [Merged PR #57](https://github.com/smytsyk-beep/a_daily/pull/57)
+- [Merged PR #59](https://github.com/smytsyk-beep/a_daily/pull/59)
