@@ -7,8 +7,8 @@
 ## Implementation status
 
 - Remediation status: Issues #35 and #36 completed via PRs #61 and #62; Issue
-  #37 trusted-host, safe-error, and exposure work is locally verified and
-  remains in progress until review and merge.
+  #37 trusted-host, safe-error, and exposure work is locally verified in draft
+  PR #63 and remains in progress until review and merge.
 - Application code changes: Issue #37 production HTTP boundary hardening is
   implemented on `fix/37-trusted-host-safe-errors`.
 - Active release wave: **Wave A — Mandatory Foundation**.

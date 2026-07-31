@@ -16,15 +16,16 @@
 
 - Approved remediation base branch: `main`
 - Current working branch: `fix/37-trusted-host-safe-errors`
-- Worktree: Issue #37 implemented and locally verified; changes uncommitted
+- Worktree: Issue #37 commits pushed to draft PR #63
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13)
 - Current implementation issue:
   [#37 — Add trusted-host, safe-error, and production route-exposure tests](https://github.com/smytsyk-beep/a_daily/issues/37)
-- Current PR: `none`
-- Trusted-host/safe-error status: `implemented and locally verified`
+- Current PR:
+  [#63 — Enforce trusted hosts and safe public errors](https://github.com/smytsyk-beep/a_daily/pull/63)
+- Trusted-host/safe-error status: `implemented and locally verified; draft PR #63 open`
 - Production route-boundary status: `completed via PR #62`
 - Settings validation status: `completed via PR #61`
 - ADR status: four accepted decision records and their canonical index merged
