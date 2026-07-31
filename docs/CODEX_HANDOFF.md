@@ -15,29 +15,36 @@
 ## Current work
 
 - Approved remediation base branch: `main`
-- Current working branch: none; no implementation issue is selected
-- Worktree: clean after Issue #34 merged into `main`
+- Current working branch: `fix/35-fail-fast-production-settings`
+- Worktree: scoped Issue #35 changes implemented and verified; not committed
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
-  [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12)
-- Current implementation issue: `not selected`
+  [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13)
+- Current implementation issue:
+  [#35 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/issues/35)
 - Current PR: `none`
+- Settings validation status: `implemented and locally verified`
 - ADR status: four accepted decision records and their canonical index merged
   via PR #59
-- Baseline verification: `passed` locally on Windows/Python 3.13 on
-  `2026-07-31`; canonical GitHub Actions Python 3.11 run passed on PR #57
+- Baseline verification: `passed` locally for Issue #35 on Windows/Python 3.13
+  on `2026-07-31`; canonical GitHub Actions Python 3.11 baseline last passed on
+  PR #57
 - Disposable database: PostgreSQL `160011`, empty before migrations
 - Fresh migration result: `passed`, head `a1b2c3d4e5f6`
-- Pytest result: `100 passed, 128 warnings in 18.05s`; skips/xfails/xpasses
-  all zero
+- Current regression suite: `156 passed, 128 warnings`; skips/xfails/xpasses
+  all zero (historical audited baseline remains `100 passed`)
 - Expected Alembic drift: real `alembic check` failed and matched all 11
   Issue #15 manifest entries exactly
 - Cleanup: generated container, network, `tmpfs`, timezone data, and temporary
   configuration removed and verified
+- Production settings/startup tests: invalid production configuration blocks
+  canonical app import; valid configuration imports without DB/provider access
+- Route inventory: unchanged by Issue #35; production route filtering remains
+  owned by Issues #36 and #37
 - Latest merged PR:
   [#59 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/pull/59)
-- Application or historical migration code changed for Issue #34: `no`
+- Historical migration code changed for Issue #35: `no`
 
 ## Completed issues
 
@@ -100,6 +107,7 @@ drift owned by Issue #15. It verifies disposable resource cleanup.
 - [Current tracking issue #12](https://github.com/smytsyk-beep/a_daily/issues/12)
 - [Known schema drift tracking issue #15](https://github.com/smytsyk-beep/a_daily/issues/15)
 - [Baseline verification guide](baseline_verification.md)
+- [Application configuration contract](configuration.md)
 - [Architecture Decision Record index](adr/README.md)
 - [Completed implementation issue #32](https://github.com/smytsyk-beep/a_daily/issues/32)
 - [Completed implementation issue #33](https://github.com/smytsyk-beep/a_daily/issues/33)

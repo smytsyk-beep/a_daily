@@ -6,15 +6,16 @@
 
 ## Implementation status
 
-- Remediation status: Issue #34 architecture ADRs completed via PR #59; the
-  next implementation issue is not selected.
-- Application code changes: none.
+- Remediation status: Issue #35 fail-fast production settings and secret
+  validation is in progress.
+- Application code changes: Issue #35 settings/startup scope in progress.
 - Active release wave: **Wave A — Mandatory Foundation**.
 - Active GitHub milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1).
 - Current tracking issue:
-  [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12).
-- Current implementation issue: not selected.
+  [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13).
+- Current implementation issue:
+  [#35 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/issues/35).
 - ADR status: accepted and merged; the canonical index is
   [docs/adr/README.md](adr/README.md).
 - Completed GitHub issues:
