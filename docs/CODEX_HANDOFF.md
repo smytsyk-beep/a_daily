@@ -23,7 +23,8 @@
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12)
 - Current implementation issue:
   [#34 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/issues/34)
-- Current PR: `none`
+- Current PR:
+  [#59 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/pull/59)
 - ADR status: `in progress`; four accepted decision records and their canonical
   index are being prepared without application or configuration changes
 - Baseline verification: `passed` locally on Windows/Python 3.13 on
