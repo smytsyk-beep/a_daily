@@ -13,21 +13,24 @@
 
 ## Current work
 
-- Current working branch: `docs/32-governance-handoff`
-- Worktree: `dirty` — Issue #32 governance files and pre-existing unrelated
-  local changes are uncommitted; unrelated changes remain excluded
+- Approved remediation base branch: `main`
+- Worktree: no Issue #32 changes remain uncommitted; verify local unrelated
+  changes with `git status --short` before selecting the next issue
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12)
-- Current implementation issue:
-  [#32 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/issues/32)
+- Current implementation issue: `not selected`
 - Current PR: `none`
+- Latest merged PR:
+  [#55 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/pull/55)
 - Application code changed for Issue #32: `no`
 
 ## Completed issues
 
-- None.
+- [#32 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/issues/32)
+  via [PR #55](https://github.com/smytsyk-beep/a_daily/pull/55), merged
+  `2026-07-31`
 
 ## Architecture invariants
 
@@ -79,4 +82,5 @@ all other baseline checks must not regress.
 - [Pre-production code audit](preprod_code_audit.md)
 - [Correction plan](Correction_plan_AstroDaily_2026-07-30.md)
 - [Current tracking issue #12](https://github.com/smytsyk-beep/a_daily/issues/12)
-- [Current implementation issue #32](https://github.com/smytsyk-beep/a_daily/issues/32)
+- [Completed implementation issue #32](https://github.com/smytsyk-beep/a_daily/issues/32)
+- [Merged PR #55](https://github.com/smytsyk-beep/a_daily/pull/55)
