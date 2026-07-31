@@ -15,14 +15,17 @@
 ## Current work
 
 - Approved remediation base branch: `main`
-- Current working branch: none; no implementation issue is selected
-- Worktree: clean after Issue #33 merged into `main`
+- Current working branch: `docs/34-architecture-adrs`
+- Worktree: documentation-only ADR work in progress for Issue #34
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12)
-- Current implementation issue: `not selected`
+- Current implementation issue:
+  [#34 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/issues/34)
 - Current PR: `none`
+- ADR status: `in progress`; four accepted decision records and their canonical
+  index are being prepared without application or configuration changes
 - Baseline verification: `passed` locally on Windows/Python 3.13 on
   `2026-07-31`; canonical GitHub Actions Python 3.11 run passed on PR #57
 - Disposable database: PostgreSQL `160011`, empty before migrations
@@ -95,6 +98,7 @@ drift owned by Issue #15. It verifies disposable resource cleanup.
 - [Current tracking issue #12](https://github.com/smytsyk-beep/a_daily/issues/12)
 - [Known schema drift tracking issue #15](https://github.com/smytsyk-beep/a_daily/issues/15)
 - [Baseline verification guide](baseline_verification.md)
+- [Architecture Decision Record index](adr/README.md)
 - [Completed implementation issue #32](https://github.com/smytsyk-beep/a_daily/issues/32)
 - [Completed implementation issue #33](https://github.com/smytsyk-beep/a_daily/issues/33)
 - [Merged PR #57](https://github.com/smytsyk-beep/a_daily/pull/57)
