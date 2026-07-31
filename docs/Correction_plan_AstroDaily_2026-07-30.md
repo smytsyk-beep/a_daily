@@ -6,17 +6,17 @@
 
 ## Implementation status
 
-- Remediation status: Issue #32 repository governance and Codex handoff in
-  progress.
+- Remediation status: repository governance and Codex handoff established by
+  Issue #32 and PR #55; the next implementation issue is not selected.
 - Application code changes: none.
 - Active release wave: **Wave A — Mandatory Foundation**.
 - Active GitHub milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1).
 - Current tracking issue:
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12).
-- Current implementation issue:
+- Current implementation issue: not selected.
+- Completed GitHub issues:
   [#32 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/issues/32).
-- Completed GitHub issues: none.
 - GitHub backlog created: 3 milestones, 17 project labels, 20 tracking issues,
   and 23 Wave A implementation issues.
 - Wave B and Wave C implementation issues remain decomposed in this document
