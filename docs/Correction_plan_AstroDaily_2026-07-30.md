@@ -8,13 +8,15 @@
 
 - Remediation status: Issues #35, #36, and #37 completed via PRs #61, #62, and
   #63; tracking Issue #13 is closed.
-- Application code changes: none active; the pilot production HTTP boundary is
-  complete in `main`.
+- Application code changes: Issue #38 canonical plan and digest-policy service
+  is active on `refactor/38-canonical-plan-policy`.
 - Active release wave: **Wave A — Mandatory Foundation**.
 - Active GitHub milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1).
-- Current tracking issue: not selected.
-- Current implementation issue: not selected.
+- Current tracking issue:
+  [#14 — Make plans and entitlements canonical and safe](https://github.com/smytsyk-beep/a_daily/issues/14).
+- Current implementation issue:
+  [#38 — Consolidate the canonical plan and digest-policy service](https://github.com/smytsyk-beep/a_daily/issues/38).
 - ADR status: accepted and merged; the canonical index is
   [docs/adr/README.md](adr/README.md).
 - Completed GitHub issues:

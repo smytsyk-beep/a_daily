@@ -1,148 +1,253 @@
-# src/common/plans.py
+"""Canonical, channel-neutral plan and digest policy.
+
+The entitlement timestamps in the current schema are PostgreSQL
+``timestamp without time zone`` values.  This module treats those stored
+values as UTC at the repository boundary.  Public APIs accept only aware
+``now`` values so a server-local timezone can never be inferred implicitly.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
-from enum import Enum
-from typing import Dict, FrozenSet, Literal, Optional, Set, Union
+from datetime import datetime, timezone
+from enum import StrEnum
+from types import MappingProxyType
+from typing import Final, FrozenSet, Mapping, TypeAlias
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-# =========================
-# Plan codes (single source of truth)
-# =========================
 
-PlanCode = Literal["demo", "daily", "full", "internal"]
+class PlanCode(StrEnum):
+    """Canonical plan identifiers persisted and used by policy."""
 
-# Default plan if entitlements отсутствуют (до Stripe): daily/free
-DEFAULT_PLAN: PlanCode = "demo"
-
-DEFAULT_PLAN_CODE: PlanCode = DEFAULT_PLAN  # backward-compat alias
-
-# Legacy values that may exist in entitlements.plan (your DB screenshot shows: basic/pro)
-_PLAN_ALIASES: dict[str, PlanCode] = {
-    "basic": "daily",
-    "pro": "full",
-    # safety aliases
-    "free": "daily",
-    "premium": "full",
-}
-
-# =========================
-# Features (gating)
-# =========================
+    DEMO = "demo"
+    DAILY = "daily"
+    FULL = "full"
+    INTERNAL = "internal"
 
 
-class PlanFeature(str, Enum):
-    DAILY_DIGEST = "daily_digest"  # /today
-    STRONG_ALERTS = "strong_alerts"  # strong_events_alerts
-    CALENDAR_ICS = "calendar_ics"  # /calendar.ics
-    QUIET_MODE = "quiet_mode"  # /snooze etc (delivery controls)
+class DigestLength(StrEnum):
+    """Canonical requested and resolved digest lengths."""
 
-    # alias for old name used earlier in code/tests
+    SHORT = "short"
+    MEDIUM = "medium"
+    LONG = "long"
+
+
+class PlanFeature(StrEnum):
+    """Canonical plan-gated feature identifiers."""
+
+    DAILY_DIGEST = "daily_digest"
+    STRONG_ALERTS = "strong_alerts"
+    CALENDAR_ICS = "calendar_ics"
+    QUIET_MODE = "quiet_mode"
+
+    # Compatibility alias used by existing callers and translations.
     ALERTS_STRONG = "strong_alerts"
-
-
-DigestCap = Literal["short", "medium", "long"]
 
 
 @dataclass(frozen=True)
 class PlanRuntimeConfig:
+    """Immutable maximum capabilities for one canonical plan."""
+
     code: PlanCode
-    digest_cap: DigestCap
+    max_digest_length: DigestLength
+    atom_cap: int
     features: FrozenSet[PlanFeature]
 
+    @property
+    def digest_cap(self) -> DigestLength:
+        """Deprecated compatibility name; use ``max_digest_length``."""
 
-_PLAN_CONFIGS: Dict[PlanCode, PlanRuntimeConfig] = {
-    "demo": PlanRuntimeConfig(
-        code="demo",
-        digest_cap="short",
-        features=frozenset({PlanFeature.DAILY_DIGEST}),
-    ),
-    "daily": PlanRuntimeConfig(
-        code="daily",
-        digest_cap="medium",
-        features=frozenset({PlanFeature.DAILY_DIGEST, PlanFeature.QUIET_MODE}),
-    ),
-    "full": PlanRuntimeConfig(
-        code="full",
-        digest_cap="long",
-        features=frozenset(
-            {
-                PlanFeature.DAILY_DIGEST,
-                PlanFeature.QUIET_MODE,
-                PlanFeature.STRONG_ALERTS,
-                PlanFeature.CALENDAR_ICS,
-            }
+        return self.max_digest_length
+
+
+@dataclass(frozen=True)
+class DigestPolicy:
+    """Immutable resolved digest policy for a plan and user preference."""
+
+    plan_code: PlanCode
+    requested_length: DigestLength
+    final_length: DigestLength
+    atom_cap: int
+
+
+DEFAULT_PLAN: Final[PlanCode] = PlanCode.DEMO
+DEFAULT_PLAN_CODE: Final[PlanCode] = DEFAULT_PLAN
+
+_PLAN_ALIASES: Final[Mapping[str, PlanCode]] = MappingProxyType(
+    {
+        "basic": PlanCode.DAILY,
+        "pro": PlanCode.FULL,
+        "free": PlanCode.DAILY,
+        "premium": PlanCode.FULL,
+    }
+)
+
+_ATOM_CAPS: Final[Mapping[DigestLength, int]] = MappingProxyType(
+    {
+        DigestLength.SHORT: 2,
+        DigestLength.MEDIUM: 3,
+        DigestLength.LONG: 6,
+    }
+)
+
+_PLAN_CONFIGS: Final[Mapping[PlanCode, PlanRuntimeConfig]] = MappingProxyType(
+    {
+        PlanCode.DEMO: PlanRuntimeConfig(
+            code=PlanCode.DEMO,
+            max_digest_length=DigestLength.SHORT,
+            atom_cap=2,
+            features=frozenset({PlanFeature.DAILY_DIGEST}),
         ),
-    ),
-    "internal": PlanRuntimeConfig(
-        code="internal",
-        digest_cap="long",
-        features=frozenset(
-            {
-                PlanFeature.DAILY_DIGEST,
-                PlanFeature.QUIET_MODE,
-                PlanFeature.STRONG_ALERTS,
-                PlanFeature.CALENDAR_ICS,
-            }
+        PlanCode.DAILY: PlanRuntimeConfig(
+            code=PlanCode.DAILY,
+            max_digest_length=DigestLength.MEDIUM,
+            atom_cap=3,
+            features=frozenset({PlanFeature.DAILY_DIGEST, PlanFeature.QUIET_MODE}),
         ),
-    ),
-}
+        PlanCode.FULL: PlanRuntimeConfig(
+            code=PlanCode.FULL,
+            max_digest_length=DigestLength.LONG,
+            atom_cap=6,
+            features=frozenset(
+                {
+                    PlanFeature.DAILY_DIGEST,
+                    PlanFeature.QUIET_MODE,
+                    PlanFeature.STRONG_ALERTS,
+                    PlanFeature.CALENDAR_ICS,
+                }
+            ),
+        ),
+        PlanCode.INTERNAL: PlanRuntimeConfig(
+            code=PlanCode.INTERNAL,
+            max_digest_length=DigestLength.LONG,
+            atom_cap=6,
+            features=frozenset(
+                {
+                    PlanFeature.DAILY_DIGEST,
+                    PlanFeature.QUIET_MODE,
+                    PlanFeature.STRONG_ALERTS,
+                    PlanFeature.CALENDAR_ICS,
+                }
+            ),
+        ),
+    }
+)
+
+_LENGTH_ORDER: Final[Mapping[DigestLength, int]] = MappingProxyType(
+    {
+        DigestLength.SHORT: 0,
+        DigestLength.MEDIUM: 1,
+        DigestLength.LONG: 2,
+    }
+)
+
+_FEATURE_ALIASES: Final[Mapping[str, PlanFeature]] = MappingProxyType(
+    {
+        "daily_digest": PlanFeature.DAILY_DIGEST,
+        "digest_daily": PlanFeature.DAILY_DIGEST,
+        "digest_daily_demo": PlanFeature.DAILY_DIGEST,
+        "strong_alerts": PlanFeature.STRONG_ALERTS,
+        "alerts_strong": PlanFeature.STRONG_ALERTS,
+        "calendar_ics": PlanFeature.CALENDAR_ICS,
+        "quiet_mode": PlanFeature.QUIET_MODE,
+    }
+)
 
 
-def all_plan_codes() -> Set[PlanCode]:
-    return set(_PLAN_CONFIGS.keys())
+def all_plan_codes() -> FrozenSet[PlanCode]:
+    """Return the immutable set of canonical plan identifiers."""
+
+    return frozenset(_PLAN_CONFIGS)
 
 
-# Backwards-compat alias (старый код воспринимал plan как просто строку)
-PlanType = PlanCode
+def normalize_plan_code(raw: str | PlanCode | None) -> PlanCode:
+    """Normalize canonical codes and legacy aliases, failing safe to demo."""
 
-
-def get_plan_config(code: Optional[PlanCode]) -> PlanRuntimeConfig:
-    if code is None:
-        code = DEFAULT_PLAN
-    cfg = _PLAN_CONFIGS.get(code)
-    if cfg is None:
-        cfg = _PLAN_CONFIGS[DEFAULT_PLAN]
-    return cfg
-
-
-def get_plan_runtime_config(code: Optional[PlanCode]) -> PlanRuntimeConfig:
-    # backward-compat function name
-    return get_plan_config(code)
-
-
-def normalise_plan_code(plan_raw: str | None) -> PlanType:
-    if not plan_raw:
+    if isinstance(raw, PlanCode):
+        return raw
+    if raw is None:
         return DEFAULT_PLAN
 
-    raw = plan_raw.strip().lower()
-    raw = _PLAN_ALIASES.get(raw, raw)
-
-    if raw not in _PLAN_CONFIGS:
+    value = str(raw).strip().lower()
+    if not value:
+        return DEFAULT_PLAN
+    if value in _PLAN_ALIASES:
+        return _PLAN_ALIASES[value]
+    try:
+        return PlanCode(value)
+    except ValueError:
         return DEFAULT_PLAN
 
-    return raw  # type: ignore[return-value]
+
+def get_plan_config(plan_code: str | PlanCode | None) -> PlanRuntimeConfig:
+    """Return the immutable runtime configuration for a normalized plan."""
+
+    return _PLAN_CONFIGS[normalize_plan_code(plan_code)]
 
 
-def plan_allows_feature(plan: PlanType, feature: PlanFeature) -> bool:
-    cfg = get_plan_config(plan)  # type: ignore[arg-type]
-    return feature in cfg.features
+def _normalize_requested_length(
+    requested_length: str | DigestLength | None,
+) -> DigestLength:
+    if isinstance(requested_length, DigestLength):
+        return requested_length
+    if requested_length is None:
+        return DigestLength.SHORT
+    try:
+        return DigestLength(str(requested_length).strip().lower())
+    except ValueError:
+        return DigestLength.SHORT
 
 
-def plan_max_digest_length(plan: PlanType) -> str:
-    cfg = get_plan_config(plan)  # type: ignore[arg-type]
-    return cfg.digest_cap
+def resolve_digest_policy(
+    plan_code: str | PlanCode | None,
+    requested_length: str | DigestLength | None,
+) -> DigestPolicy:
+    """Clamp a requested length to the plan maximum and derive its atom cap.
+
+    Missing or unsupported requested lengths fail safe to ``short`` rather
+    than accidentally granting a medium or long digest.
+    """
+
+    config = get_plan_config(plan_code)
+    requested = _normalize_requested_length(requested_length)
+    final_length = min(
+        (requested, config.max_digest_length),
+        key=_LENGTH_ORDER.__getitem__,
+    )
+    return DigestPolicy(
+        plan_code=config.code,
+        requested_length=requested,
+        final_length=final_length,
+        atom_cap=_ATOM_CAPS[final_length],
+    )
 
 
-# =========================
-# Entitlements -> current plan (DB)
-# =========================
+def _parse_feature(feature: str | PlanFeature) -> PlanFeature | None:
+    if isinstance(feature, PlanFeature):
+        return feature
+    value = str(feature or "").strip().lower()
+    return _FEATURE_ALIASES.get(value)
 
-_SQL_GET_ACTIVE_PLAN = text(
+
+def plan_allows_feature(
+    plan_code: str | PlanCode | None,
+    feature: str | PlanFeature,
+) -> bool:
+    """Return whether the normalized plan allows a known feature.
+
+    Unknown feature values always fail closed.
+    """
+
+    parsed_feature = _parse_feature(feature)
+    if parsed_feature is None:
+        return False
+    return parsed_feature in get_plan_config(plan_code).features
+
+
+_SQL_GET_EFFECTIVE_PLAN = text(
     """
     SELECT plan
     FROM entitlements
@@ -150,131 +255,164 @@ _SQL_GET_ACTIVE_PLAN = text(
       AND active = true
       AND started_at <= :now
       AND (expires_at IS NULL OR expires_at > :now)
-    ORDER BY started_at DESC
+    ORDER BY started_at DESC, id DESC
     LIMIT 1
     """
 )
 
 
-def get_user_plan(db: Session, user_id: int, **kwargs) -> PlanCode:
+def _entitlement_now(now: datetime | None) -> datetime:
+    """Convert an aware instant to the schema's naive-UTC representation."""
+
+    instant = now or datetime.now(timezone.utc)
+    if instant.tzinfo is None or instant.utcoffset() is None:
+        raise ValueError("now must be timezone-aware")
+    return instant.astimezone(timezone.utc).replace(tzinfo=None)
+
+
+def get_user_plan_code(
+    db: Session,
+    user_id: int,
+    *,
+    now: datetime | None = None,
+) -> PlanCode:
+    """Resolve one user's effective plan at an explicit UTC instant.
+
+    Before Issue #43 enforces one active row, conflicts resolve to the row
+    with the latest ``started_at`` and then the highest ``id``.  An unknown
+    value in that winning row resolves to ``demo``; policy never falls back to
+    an older row that might grant more access.
     """
-    SINGLE entrypoint used across app/tests.
 
-    Reads current plan from entitlements.
-    If no active entitlement -> DEFAULT_PLAN ("demo").
-
-    kwargs accepted for backward compatibility (e.g. today=..., now=...).
-    """
-    now: datetime | None = kwargs.get("now")
-    now_dt = now or datetime.utcnow()
-
-    row = db.execute(_SQL_GET_ACTIVE_PLAN, {"user_id": user_id, "now": now_dt}).first()
-    if not row:
+    row = db.execute(
+        _SQL_GET_EFFECTIVE_PLAN,
+        {"user_id": user_id, "now": _entitlement_now(now)},
+    ).first()
+    if row is None:
         return DEFAULT_PLAN
+    return normalize_plan_code(row[0])
 
-    return normalise_plan_code(str(row[0]))
+
+def get_user_plan_config(
+    db: Session,
+    user_id: int,
+    *,
+    now: datetime | None = None,
+) -> PlanRuntimeConfig:
+    """Return runtime configuration for a user's effective plan."""
+
+    return get_plan_config(get_user_plan_code(db, user_id, now=now))
+
+
+# ---------------------------------------------------------------------------
+# Compatibility API.  These names delegate to the canonical contracts and
+# remain only until Issue #42 migrates their callers.
+# ---------------------------------------------------------------------------
+
+PlanType: TypeAlias = PlanCode
+DigestCap: TypeAlias = DigestLength
+
+
+def normalise_plan_code(plan_raw: str | PlanCode | None) -> PlanCode:
+    """Deprecated British-spelling compatibility wrapper."""
+
+    return normalize_plan_code(plan_raw)
+
+
+def get_plan_runtime_config(
+    code: str | PlanCode | None,
+) -> PlanRuntimeConfig:
+    """Deprecated compatibility wrapper; use :func:`get_plan_config`."""
+
+    return get_plan_config(code)
+
+
+def get_user_plan(db: Session, user_id: int, **kwargs: object) -> PlanCode:
+    """Deprecated compatibility wrapper returning only :class:`PlanCode`."""
+
+    now = kwargs.get("now")
+    if now is not None and not isinstance(now, datetime):
+        raise TypeError("now must be a datetime or None")
+    return get_user_plan_code(db, user_id, now=now)
 
 
 def get_plan_runtime_config_for_user(
-    db: Session, user_id: int, **kwargs
+    db: Session,
+    user_id: int,
+    **kwargs: object,
 ) -> PlanRuntimeConfig:
-    code = get_user_plan(db, user_id, **kwargs)
-    return get_plan_runtime_config(code)
+    """Deprecated compatibility wrapper; use :func:`get_user_plan_config`."""
+
+    now = kwargs.get("now")
+    if now is not None and not isinstance(now, datetime):
+        raise TypeError("now must be a datetime or None")
+    return get_user_plan_config(db, user_id, now=now)
 
 
-# =========================
-# Backward-compat helpers (replacing old app.plans API)
-# =========================
+def plan_max_digest_length(plan: str | PlanCode | None) -> DigestLength:
+    """Deprecated compatibility wrapper for the plan maximum length."""
+
+    return get_plan_config(plan).max_digest_length
 
 
-def _parse_feature(feature: Union[str, PlanFeature]) -> PlanFeature | None:
-    if isinstance(feature, PlanFeature):
-        return feature
+def is_feature_allowed_for_plan(
+    plan: str | PlanCode | None,
+    feature: str | PlanFeature,
+) -> bool:
+    """Deprecated compatibility wrapper for :func:`plan_allows_feature`."""
 
-    f = (feature or "").strip().lower()
-    if f in ("daily_digest", "digest_daily", "digest_daily_demo"):
-        return PlanFeature.DAILY_DIGEST
-    if f in ("strong_alerts", "alerts_strong"):
-        return PlanFeature.STRONG_ALERTS
-    if f in ("calendar_ics",):
-        return PlanFeature.CALENDAR_ICS
-    if f in ("quiet_mode",):
-        return PlanFeature.QUIET_MODE
-
-    return None
-
-
-def is_feature_allowed_for_plan(plan: str, feature: Union[str, PlanFeature]) -> bool:
-    code = normalise_plan_code(plan)
-    pf = _parse_feature(feature)
-    if pf is None:
-        return False
-    return plan_allows_feature(code, pf)
+    return plan_allows_feature(plan, feature)
 
 
 def is_feature_allowed_for_user(
-    db: Session, user_id: int, feature: Union[str, PlanFeature], **kwargs
+    db: Session,
+    user_id: int,
+    feature: str | PlanFeature,
+    **kwargs: object,
 ) -> bool:
-    code = get_user_plan(db, user_id, **kwargs)
-    pf = _parse_feature(feature)
-    if pf is None:
-        return False
-    return plan_allows_feature(code, pf)
+    """Deprecated compatibility wrapper for the canonical user plan check."""
+
+    now = kwargs.get("now")
+    if now is not None and not isinstance(now, datetime):
+        raise TypeError("now must be a datetime or None")
+    return plan_allows_feature(
+        get_user_plan_code(db, user_id, now=now),
+        feature,
+    )
 
 
 def get_plan_display_name(plan_code: str, locale: str | None = None) -> str:
-    """
-    Lightweight display name. (User-facing i18n can override via locales later.)
+    """Return the existing lightweight localized display name."""
 
-    locale is optional and используется только для базовых RU/ES вариантов.
-    """
-    code = normalise_plan_code(plan_code)
-
-    loc = (locale or "").strip().lower()
-    base = loc.split("-")[0] if loc else "en"
-
-    # brand names: keep "Daily Focus" as a product name; translate Demo only
+    code = normalize_plan_code(plan_code)
+    base = (locale or "").strip().lower().split("-")[0] or "en"
     if base == "ru":
         return {
-            "demo": "Демо",
-            "daily": "Daily Focus",
-            "full": "Full",
-            "internal": "Internal",
+            PlanCode.DEMO: "Демо",
+            PlanCode.DAILY: "Daily Focus",
+            PlanCode.FULL: "Full",
+            PlanCode.INTERNAL: "Internal",
         }[code]
-    if base == "es":
-        return {
-            "demo": "Demo",
-            "daily": "Daily Focus",
-            "full": "Full",
-            "internal": "Internal",
-        }[code]
-
     return {
-        "demo": "Demo",
-        "daily": "Daily Focus",
-        "full": "Full",
-        "internal": "Internal",
+        PlanCode.DEMO: "Demo",
+        PlanCode.DAILY: "Daily Focus",
+        PlanCode.FULL: "Full",
+        PlanCode.INTERNAL: "Internal",
     }[code]
 
 
-# ---- i18n helper keys (used by Telegram / UI) ----
-
-
 def plan_title_key(plan_code: str | PlanCode) -> str:
-    """
-    i18n key for plan name: tg.plan.name.daily / tg.plan.name.full / etc.
-    """
-    code = normalise_plan_code(str(plan_code))
-    return f"tg.plan.name.{code}"
+    """Return the existing i18n key for a plan name."""
+
+    return f"tg.plan.name.{normalize_plan_code(plan_code).value}"
 
 
 def feature_title_key(feature: PlanFeature) -> str:
-    """
-    i18n key for feature label.
-    """
+    """Return the existing i18n key for a canonical feature label."""
+
     if feature == PlanFeature.DAILY_DIGEST:
         return "tg.plan.feature.digest"
-    if feature in (PlanFeature.STRONG_ALERTS, PlanFeature.ALERTS_STRONG):
+    if feature == PlanFeature.STRONG_ALERTS:
         return "tg.plan.feature.alerts"
     if feature == PlanFeature.CALENDAR_ICS:
         return "tg.plan.feature.calendar"
