@@ -9,22 +9,35 @@
 - Baseline tests: `100 passed in 14.88s` on isolated PostgreSQL 16
 - Fresh `alembic upgrade head`: `passed` on a clean database
 - `alembic check`: currently `failed` due to ORM/migration schema drift
+- Canonical baseline command: `python scripts/verify_baseline.py`
 - Scheduled delivery: `disabled`
 
 ## Current work
 
 - Approved remediation base branch: `main`
-- Worktree: no Issue #32 changes remain uncommitted; verify local unrelated
-  changes with `git status --short` before selecting the next issue
+- Current working branch: `test/33-reproducible-baseline`
+- Worktree: dirty with Issue #33 verification, CI, and documentation changes
+  only
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12)
-- Current implementation issue: `not selected`
+- Current implementation issue:
+  [#33 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/issues/33)
 - Current PR: `none`
+- Baseline verification: `passed` locally on Windows/Python 3.13 on
+  `2026-07-31`; canonical GitHub Actions Python 3.11 run pending PR
+- Disposable database: PostgreSQL `160011`, empty before migrations
+- Fresh migration result: `passed`, head `a1b2c3d4e5f6`
+- Pytest result: `100 passed, 128 warnings in 18.05s`; skips/xfails/xpasses
+  all zero
+- Expected Alembic drift: real `alembic check` failed and matched all 11
+  Issue #15 manifest entries exactly
+- Cleanup: generated container, network, `tmpfs`, timezone data, and temporary
+  configuration removed and verified
 - Latest merged PR:
   [#55 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/pull/55)
-- Application code changed for Issue #32: `no`
+- Application or historical migration code changed for Issue #33: `no`
 
 ## Completed issues
 
@@ -64,23 +77,23 @@ belongs in GitHub issues and pull requests.
 
 ## Required verification
 
-Run with an explicit test `DATABASE_URL` against isolated PostgreSQL 16:
+Run the canonical isolated PostgreSQL 16 baseline:
 
 ```text
-pre-commit run --all-files --show-diff-on-failure
-alembic upgrade head
-alembic check
-pytest -q tests
-git diff --check
+python scripts/verify_baseline.py
 ```
 
-`alembic check` is expected to fail until the schema-drift issue is completed;
-all other baseline checks must not regress.
+The runner requires exactly 100 passing tests with no skips/xfails, a fresh
+upgrade to `a1b2c3d4e5f6`, and an exact match to the expected 11-entry Alembic
+drift owned by Issue #15. It verifies disposable resource cleanup.
 
 ## Links
 
 - [Pre-production code audit](preprod_code_audit.md)
 - [Correction plan](Correction_plan_AstroDaily_2026-07-30.md)
 - [Current tracking issue #12](https://github.com/smytsyk-beep/a_daily/issues/12)
+- [Current implementation issue #33](https://github.com/smytsyk-beep/a_daily/issues/33)
+- [Known schema drift tracking issue #15](https://github.com/smytsyk-beep/a_daily/issues/15)
+- [Baseline verification guide](baseline_verification.md)
 - [Completed implementation issue #32](https://github.com/smytsyk-beep/a_daily/issues/32)
 - [Merged PR #55](https://github.com/smytsyk-beep/a_daily/pull/55)
