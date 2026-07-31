@@ -30,7 +30,7 @@ MANIFEST_PATH = REPO_ROOT / "scripts" / "baseline_known_drift.json"
 POSTGRES_IMAGE = "postgres:16"
 POSTGRES_DATA_DIR = "/var/lib/postgresql/data"
 RESOURCE_LABEL = "com.astrodaily.baseline.id"
-EXPECTED_TEST_COUNT = 186
+EXPECTED_TEST_COUNT = 226
 COMMAND_TIMEOUT_SECONDS = 300
 TIMEZONE_FILES = {
     "UTC": "Etc/UTC",

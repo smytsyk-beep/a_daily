@@ -15,24 +15,27 @@
 ## Current work
 
 - Approved remediation base branch: `main`
-- Current working branch: `main`
-- Worktree: clean after the Issue #36 post-merge handoff update
+- Current working branch: `fix/37-trusted-host-safe-errors`
+- Worktree: Issue #37 commits pushed to draft PR #63
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13)
-- Current implementation issue: `not selected`
-- Current PR: `none`
+- Current implementation issue:
+  [#37 — Add trusted-host, safe-error, and production route-exposure tests](https://github.com/smytsyk-beep/a_daily/issues/37)
+- Current PR:
+  [#63 — Enforce trusted hosts and safe public errors](https://github.com/smytsyk-beep/a_daily/pull/63)
+- Trusted-host/safe-error status: `implemented and locally verified; draft PR #63 open`
 - Production route-boundary status: `completed via PR #62`
 - Settings validation status: `completed via PR #61`
 - ADR status: four accepted decision records and their canonical index merged
   via PR #59
-- Baseline verification: `passed` locally for Issue #36 on Windows/Python 3.13
-  on `2026-07-31`; canonical GitHub Actions Python 3.11 baseline passed on
-  PR #62
+- Baseline verification: `passed` locally for Issue #37 on Windows/Python 3.13
+  on `2026-07-31`; latest canonical GitHub Actions Python 3.11 baseline passed
+  on PR #62
 - Disposable database: PostgreSQL `160011`, empty before migrations
 - Fresh migration result: `passed`, head `a1b2c3d4e5f6`
-- Current regression suite: `186 passed, 128 warnings`; skips/xfails/xpasses
+- Current regression suite: `226 passed, 128 warnings`; skips/xfails/xpasses
   all zero (historical audited baseline remains `100 passed`)
 - Expected Alembic drift: real `alembic check` failed and matched all 11
   Issue #15 manifest entries exactly
@@ -43,9 +46,11 @@
 - Production route inventory: exactly `GET /health` and
   `POST /telegram/webhook`; private route modules are not imported
 - Health contract: `{"status": "ok"}` in every environment
+- Production middleware order: correlation ID, trusted-host enforcement,
+  FastAPI routing; safe errors use one stable JSON envelope
 - Latest merged PR:
   [#62 — Enforce the pilot production router boundary](https://github.com/smytsyk-beep/a_daily/pull/62)
-- Historical migration code changed for Issue #36: `no`
+- Historical migration code changed for Issue #37: `no`
 
 ## Completed issues
 

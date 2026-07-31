@@ -9,12 +9,15 @@ from fastapi.testclient import TestClient
 
 from app.main import create_app
 from common.config import Settings
+from common.error_handling import PUBLIC_ERROR_MESSAGES
+from common.http_security import CorrelationIdMiddleware, SafeTrustedHostMiddleware
 
 
 PRODUCTION_ROUTE_INVENTORY = {
     ("GET", "/health"),
     ("POST", "/telegram/webhook"),
 }
+TRUSTED_PRODUCTION_HOST = "pilot.example.invalid"
 
 SETTINGS_ENV_KEYS = {
     "APP_ENV",
@@ -82,6 +85,9 @@ PRODUCTION_DENIED_ROUTE_MATRIX = [
     pytest.param("POST", "/birth/upsert", id="birth-data-write"),
     pytest.param("GET", "/user/summary?user_ref=1", id="user-summary"),
     pytest.param("GET", "/metrics", id="metrics"),
+    pytest.param("GET", "/internal/v1/status", id="internal-api"),
+    pytest.param("GET", "/admin", id="admin-api"),
+    pytest.param("GET", "/api/v1/users/me", id="public-pwa-api"),
 ]
 
 
@@ -97,7 +103,7 @@ def make_settings(app_env: str, debug: bool) -> Settings:
                 "TELEGRAM_BOT_TOKEN": "synthetic-production-bot-token",
                 "TELEGRAM_WEBHOOK_SECRET": "synthetic_webhook_secret_1234567890",
                 "POSTGRES_PASSWORD": "synthetic-production-database-password",
-                "TRUSTED_HOSTS_INPUT": "pilot.example.invalid",
+                "TRUSTED_HOSTS_INPUT": TRUSTED_PRODUCTION_HOST,
                 "ENABLE_INTERNAL_API": False,
                 "SCHEDULED_DELIVERY_ENABLED": False,
             }
@@ -125,6 +131,14 @@ def production_app() -> FastAPI:
     return create_app(make_settings("prod", debug=False))
 
 
+@pytest.fixture
+def production_client(production_app: FastAPI) -> TestClient:
+    return TestClient(
+        production_app,
+        base_url=f"https://{TRUSTED_PRODUCTION_HOST}",
+    )
+
+
 def test_production_fastapi_metadata(production_app: FastAPI) -> None:
     assert production_app.debug is False
     assert production_app.docs_url is None
@@ -133,7 +147,15 @@ def test_production_fastapi_metadata(production_app: FastAPI) -> None:
     assert Exception in production_app.exception_handlers
 
 
+def test_production_middleware_order_is_explicit(production_app: FastAPI) -> None:
+    assert [item.cls for item in production_app.user_middleware] == [
+        CorrelationIdMiddleware,
+        SafeTrustedHostMiddleware,
+    ]
+
+
 def test_production_route_inventory_is_exact(production_app: FastAPI) -> None:
+    assert all(isinstance(route, APIRoute) for route in production_app.routes)
     assert route_inventory(production_app) == Counter(PRODUCTION_ROUTE_INVENTORY)
 
 
@@ -148,19 +170,59 @@ def test_production_has_only_one_telegram_route(production_app: FastAPI) -> None
 
 @pytest.mark.parametrize(("method", "path"), PRODUCTION_DENIED_ROUTE_MATRIX)
 def test_production_denied_route_matrix_returns_404(
-    production_app: FastAPI,
+    production_client: TestClient,
     method: str,
     path: str,
 ) -> None:
-    response = TestClient(production_app).request(method, path)
+    response = production_client.request(method, path)
+
     assert response.status_code == 404
+    request_id = response.headers["x-request-id"]
+    assert response.json() == {
+        "ok": False,
+        "error": {
+            "code": "not_found",
+            "message": PUBLIC_ERROR_MESSAGES["not_found"],
+        },
+        "request_id": request_id,
+    }
 
 
-def test_production_health_contract_is_exact_and_safe(production_app: FastAPI) -> None:
-    response = TestClient(production_app).get("/health")
+def test_production_health_contract_is_exact_and_safe(
+    production_client: TestClient,
+) -> None:
+    response = production_client.get("/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert response.headers["x-request-id"]
+    assert "request_id" not in response.json()
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        pytest.param("POST", "/health", id="post-health"),
+        pytest.param("GET", "/telegram/webhook", id="get-telegram-webhook"),
+    ],
+)
+def test_wrong_method_on_allowed_production_path_returns_safe_405(
+    production_client: TestClient,
+    method: str,
+    path: str,
+) -> None:
+    response = production_client.request(method, path)
+    request_id = response.headers["x-request-id"]
+
+    assert response.status_code == 405
+    assert response.json() == {
+        "ok": False,
+        "error": {
+            "code": "method_not_allowed",
+            "message": PUBLIC_ERROR_MESSAGES["method_not_allowed"],
+        },
+        "request_id": request_id,
+    }
 
 
 @pytest.mark.parametrize(
@@ -186,4 +248,6 @@ def test_non_production_registration_depends_on_environment_not_debug(
     assert application.openapi_url == "/openapi.json"
     assert client.get("/").status_code == 200
     assert client.get("/openapi.json").status_code == 200
-    assert client.get("/health").json() == {"status": "ok"}
+    health_response = client.get("/health")
+    assert health_response.json() == {"status": "ok"}
+    assert health_response.headers["x-request-id"]

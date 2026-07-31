@@ -6,16 +6,18 @@
 
 ## Implementation status
 
-- Remediation status: Issues #35 and #36 completed via PRs #61 and #62; the
-  next implementation issue is not selected.
-- Application code changes: none active; the production router boundary is
-  merged in `main`.
+- Remediation status: Issues #35 and #36 completed via PRs #61 and #62; Issue
+  #37 trusted-host, safe-error, and exposure work is locally verified in draft
+  PR #63 and remains in progress until review and merge.
+- Application code changes: Issue #37 production HTTP boundary hardening is
+  implemented on `fix/37-trusted-host-safe-errors`.
 - Active release wave: **Wave A — Mandatory Foundation**.
 - Active GitHub milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1).
 - Current tracking issue:
   [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13).
-- Current implementation issue: not selected.
+- Current implementation issue:
+  [#37 — Add trusted-host, safe-error, and production route-exposure tests](https://github.com/smytsyk-beep/a_daily/issues/37).
 - ADR status: accepted and merged; the canonical index is
   [docs/adr/README.md](adr/README.md).
 - Completed GitHub issues:
