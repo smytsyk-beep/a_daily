@@ -67,6 +67,10 @@ def get_user_active_plan(db: Session, user_id: int) -> Optional[str]:
     """
     Возвращает активный план пользователя (Entitlement.plan),
     если он есть. Если нет активных планов — None.
+
+    Deprecated duplicate reader: it is intentionally unchanged in Issue #38
+    because its raw legacy-plan semantics feed module payload matching.
+    Issue #42 must migrate this caller to canonical effective-plan policy.
     """
     ent = (
         db.query(Entitlement)
