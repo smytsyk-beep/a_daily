@@ -24,9 +24,12 @@
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12)
 - Current implementation issue:
   [#33 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/issues/33)
-- Current PR: `none`
+- Current PR:
+  [#57 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/pull/57)
+  (`draft`)
 - Baseline verification: `passed` locally on Windows/Python 3.13 on
-  `2026-07-31`; canonical GitHub Actions Python 3.11 run pending PR
+  `2026-07-31`; canonical GitHub Actions Python 3.11 run pending on draft
+  PR #57
 - Disposable database: PostgreSQL `160011`, empty before migrations
 - Fresh migration result: `passed`, head `a1b2c3d4e5f6`
 - Pytest result: `100 passed, 128 warnings in 18.05s`; skips/xfails/xpasses
@@ -93,6 +96,7 @@ drift owned by Issue #15. It verifies disposable resource cleanup.
 - [Correction plan](Correction_plan_AstroDaily_2026-07-30.md)
 - [Current tracking issue #12](https://github.com/smytsyk-beep/a_daily/issues/12)
 - [Current implementation issue #33](https://github.com/smytsyk-beep/a_daily/issues/33)
+- [Current draft PR #57](https://github.com/smytsyk-beep/a_daily/pull/57)
 - [Known schema drift tracking issue #15](https://github.com/smytsyk-beep/a_daily/issues/15)
 - [Baseline verification guide](baseline_verification.md)
 - [Completed implementation issue #32](https://github.com/smytsyk-beep/a_daily/issues/32)
