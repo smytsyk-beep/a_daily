@@ -23,7 +23,8 @@
   [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13)
 - Current implementation issue:
   [#35 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/issues/35)
-- Current PR: `none`
+- Current PR:
+  [#61 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/pull/61)
 - Settings validation status: `implemented and locally verified`
 - ADR status: four accepted decision records and their canonical index merged
   via PR #59
