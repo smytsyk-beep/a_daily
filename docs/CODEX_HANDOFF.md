@@ -16,15 +16,16 @@
 
 - Approved remediation base branch: `main`
 - Current working branch: `fix/36-production-router-boundary`
-- Worktree: scoped Issue #36 changes; not committed
+- Worktree: clean after Issue #36 commits pushed to PR #62
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13)
 - Current implementation issue:
   [#36 — Register only health and Telegram webhook on the public production app](https://github.com/smytsyk-beep/a_daily/issues/36)
-- Current PR: `none`
-- Production route-boundary status: `implemented and locally verified; PR pending`
+- Current PR:
+  [#62 — Enforce the pilot production router boundary](https://github.com/smytsyk-beep/a_daily/pull/62)
+- Production route-boundary status: `implemented and locally verified; draft PR #62 open`
 - Settings validation status: `completed via PR #61`
 - ADR status: four accepted decision records and their canonical index merged
   via PR #59

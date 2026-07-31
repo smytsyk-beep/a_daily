@@ -7,7 +7,7 @@
 ## Implementation status
 
 - Remediation status: Issue #35 completed via PR #61; Issue #36 production
-  router-boundary implementation is locally verified and pending a pull request.
+  router-boundary implementation is locally verified in draft PR #62.
 - Application code changes: Issue #36 environment-aware app factory, physical
   route registration boundary, and safe health contract implemented.
 - Active release wave: **Wave A — Mandatory Foundation**.
