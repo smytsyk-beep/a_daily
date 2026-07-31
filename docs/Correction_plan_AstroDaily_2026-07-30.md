@@ -7,14 +7,17 @@
 ## Implementation status
 
 - Remediation status: Issue #33 reproducible audited baseline completed via
-  PR #57; the next implementation issue is not selected.
+  PR #57; Issue #34 architecture ADR work has started.
 - Application code changes: none.
 - Active release wave: **Wave A — Mandatory Foundation**.
 - Active GitHub milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1).
 - Current tracking issue:
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12).
-- Current implementation issue: not selected.
+- Current implementation issue:
+  [#34 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/issues/34).
+- ADR status: in progress; the canonical index is
+  [docs/adr/README.md](adr/README.md).
 - Completed GitHub issues:
   [#32 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/issues/32)
   and
