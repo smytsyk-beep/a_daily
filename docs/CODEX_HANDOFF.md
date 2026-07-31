@@ -23,7 +23,8 @@
   [#14 — Make plans and entitlements canonical and safe](https://github.com/smytsyk-beep/a_daily/issues/14)
 - Current implementation issue:
   [#38 — Consolidate the canonical plan and digest-policy service](https://github.com/smytsyk-beep/a_daily/issues/38)
-- Current PR: `none`
+- Current PR:
+  [#64 — Consolidate canonical plan and digest policy](https://github.com/smytsyk-beep/a_daily/pull/64)
 - Canonical plan-policy status: in progress; `common.plans` is the selected
   channel-neutral source of truth
 - Trusted-host/safe-error status: `completed via PR #63`
