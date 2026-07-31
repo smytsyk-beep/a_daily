@@ -16,7 +16,7 @@
 
 - Approved remediation base branch: `main`
 - Current working branch: `fix/35-fail-fast-production-settings`
-- Worktree: scoped Issue #35 changes implemented and verified; not committed
+- Worktree: clean; Issue #35 commits pushed to PR #61
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
@@ -25,12 +25,12 @@
   [#35 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/issues/35)
 - Current PR:
   [#61 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/pull/61)
-- Settings validation status: `implemented and locally verified`
+- Settings validation status: `implemented; locally and CI verified`
 - ADR status: four accepted decision records and their canonical index merged
   via PR #59
 - Baseline verification: `passed` locally for Issue #35 on Windows/Python 3.13
-  on `2026-07-31`; canonical GitHub Actions Python 3.11 baseline last passed on
-  PR #57
+  on `2026-07-31`; canonical GitHub Actions Python 3.11 baseline passed on
+  PR #61
 - Disposable database: PostgreSQL `160011`, empty before migrations
 - Fresh migration result: `passed`, head `a1b2c3d4e5f6`
 - Current regression suite: `156 passed, 128 warnings`; skips/xfails/xpasses
