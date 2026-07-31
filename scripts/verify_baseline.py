@@ -30,7 +30,7 @@ MANIFEST_PATH = REPO_ROOT / "scripts" / "baseline_known_drift.json"
 POSTGRES_IMAGE = "postgres:16"
 POSTGRES_DATA_DIR = "/var/lib/postgresql/data"
 RESOURCE_LABEL = "com.astrodaily.baseline.id"
-EXPECTED_TEST_COUNT = 100
+EXPECTED_TEST_COUNT = 156
 COMMAND_TIMEOUT_SECONDS = 300
 TIMEZONE_FILES = {
     "UTC": "Etc/UTC",
@@ -664,7 +664,10 @@ def run_baseline() -> None:
                 display="python -m pytest -q tests -p no:cacheprovider",
             )
 
-            _print_step(7, "Verify exact pytest result: 100 passed")
+            _print_step(
+                7,
+                f"Verify exact pytest result: {EXPECTED_TEST_COUNT} passed",
+            )
             _verify_pytest_summary(pytest_result.stdout or "")
 
             _print_step(8, "Verify no skips or xfails")

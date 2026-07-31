@@ -1,6 +1,11 @@
 # src/app/main.py
 from fastapi import FastAPI
 
+from common.config import get_settings
+
+# Validate the runtime contract before importing or registering any routes.
+settings = get_settings()
+
 from app.routes_health import router as health_router
 from app.routes_db import router as db_router
 
@@ -17,7 +22,6 @@ from app.routes_birth_data import router as birth_data_router
 from app.routes_user_summary import router as user_summary_router
 from app.routes_metrics import router as metrics_router
 
-from common.config import settings
 from common.error_handling import setup_exception_handlers
 
 app = FastAPI(title="AstroDaily API", debug=settings.DEBUG)
