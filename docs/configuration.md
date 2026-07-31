@@ -18,6 +18,40 @@ defaults, omit Telegram credentials, enable debug mode, and explicitly enable
 scheduled delivery for isolated tests. Their default trusted hosts are
 `localhost,127.0.0.1`.
 
+## HTTP route registration
+
+The canonical `app.main:create_app` factory selects routes only from `APP_ENV`.
+`DEBUG` controls FastAPI debug behavior in `dev` and `test`; it never expands or
+reduces the route inventory.
+
+For `APP_ENV=prod`, the public pilot application registers exactly:
+
+- `GET /health`;
+- `POST /telegram/webhook`.
+
+Production sets `docs_url`, `redoc_url`, and `openapi_url` to `None` and forces
+FastAPI debug mode off. Root, database health, metrics, preview, events,
+feedback, module, user, birth-data, calendar, internal, admin, and future PWA
+routes are not registered. They are physically absent rather than hidden by
+middleware or an authorization dependency.
+
+For `APP_ENV=dev` and `APP_ENV=test`, the existing development routes, root,
+Swagger UI, Redoc, and OpenAPI remain registered. This broader surface is for
+local development and automated tests only; it is not the pilot production API.
+
+`GET /health` uses the same coarse response in every environment:
+
+```json
+{"status": "ok"}
+```
+
+It does not report the environment, application name or version, database
+state, dependency inventory, configuration, or exception details. Database
+readiness remains separate at `/db/health` in non-production and is not a
+public pilot route. Telegram secret-header verification and webhook
+idempotency remain later B4 work; route registration does not claim those
+controls.
+
 `prod` fails closed before route registration or provider access. It requires:
 
 - `DEBUG=false`;

@@ -6,9 +6,11 @@ audited test and migration baseline without using a developer, staging, or
 production database.
 
 The historical audited baseline remains `100 passed`. Issue
-[#35](https://github.com/smytsyk-beep/a_daily/issues/35) adds the production
-settings matrix and startup integration coverage, so the current exact
-regression-suite contract is `156 passed`.
+[#35](https://github.com/smytsyk-beep/a_daily/issues/35) increased the exact
+contract to `156 passed`. Issue
+[#36](https://github.com/smytsyk-beep/a_daily/issues/36) adds production route,
+health, environment, and startup-isolation coverage, so the current exact
+regression-suite contract is `186 passed`.
 
 ## Prerequisites
 
@@ -51,7 +53,7 @@ The runner performs this exact sequence:
 4. run a fresh `alembic upgrade head`;
 5. compare the database revision with the single repository Alembic head;
 6. run `pytest -q tests -p no:cacheprovider`;
-7. require exactly `156 passed`;
+7. require exactly `186 passed`;
 8. reject any skip, xfail, or xpass result;
 9. run the real `alembic check` command;
 10. compare its semantic drift with `scripts/baseline_known_drift.json`;
@@ -94,8 +96,8 @@ port=<random>, storage=tmpfs
 PostgreSQL version verified: server_version_num=1600xx; baseline relations=0
 [5/12] Verify current Alembic head
 Alembic head verified: a1b2c3d4e5f6
-[7/12] Verify exact pytest result: 156 passed
-Pytest contract verified: 156 passed in <seconds>s
+[7/12] Verify exact pytest result: 186 passed
+Pytest contract verified: 186 passed in <seconds>s
 [10/12] Validate the audited known drift
 Known drift contract matched exactly (11 entries)
 [12/12] Cleanup isolated PostgreSQL resources
@@ -104,7 +106,7 @@ Baseline verification passed.
 ```
 
 Warnings may be reported by pytest, but the current result contract remains
-exactly 156 passed with zero skips, xfails, and xpasses.
+exactly 186 passed with zero skips, xfails, and xpasses.
 
 ## Known Alembic drift
 
@@ -134,7 +136,7 @@ not use `alembic check || true`.
   rerun. Do not point it at another DSN.
 - **Pre-commit modifies files:** inspect the modifications, stage or revert
   them intentionally, then rerun.
-- **Test count differs from 156:** stop and investigate the regression-suite
+- **Test count differs from 186:** stop and investigate the regression-suite
   change;
   do not add skips or alter test selection.
 - **Known drift differs:** compare the semantic output with Issue #15. Do not

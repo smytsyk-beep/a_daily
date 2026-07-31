@@ -15,37 +15,38 @@
 ## Current work
 
 - Approved remediation base branch: `main`
-- Current working branch: `fix/35-fail-fast-production-settings`
-- Worktree: clean; Issue #35 commits pushed to PR #61
+- Current working branch: `fix/36-production-router-boundary`
+- Worktree: scoped Issue #36 changes; not committed
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13)
 - Current implementation issue:
-  [#35 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/issues/35)
-- Current PR:
-  [#61 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/pull/61)
-- Settings validation status: `implemented; locally and CI verified`
+  [#36 — Register only health and Telegram webhook on the public production app](https://github.com/smytsyk-beep/a_daily/issues/36)
+- Current PR: `none`
+- Production route-boundary status: `implemented and locally verified; PR pending`
+- Settings validation status: `completed via PR #61`
 - ADR status: four accepted decision records and their canonical index merged
   via PR #59
-- Baseline verification: `passed` locally for Issue #35 on Windows/Python 3.13
-  on `2026-07-31`; canonical GitHub Actions Python 3.11 baseline passed on
-  PR #61
+- Baseline verification: `passed` locally for Issue #36 on Windows/Python 3.13
+  on `2026-07-31`; latest canonical GitHub Actions Python 3.11 baseline passed
+  on PR #61
 - Disposable database: PostgreSQL `160011`, empty before migrations
 - Fresh migration result: `passed`, head `a1b2c3d4e5f6`
-- Current regression suite: `156 passed, 128 warnings`; skips/xfails/xpasses
+- Current regression suite: `186 passed, 128 warnings`; skips/xfails/xpasses
   all zero (historical audited baseline remains `100 passed`)
 - Expected Alembic drift: real `alembic check` failed and matched all 11
   Issue #15 manifest entries exactly
 - Cleanup: generated container, network, `tmpfs`, timezone data, and temporary
   configuration removed and verified
-- Production settings/startup tests: invalid production configuration blocks
-  canonical app import; valid configuration imports without DB/provider access
-- Route inventory: unchanged by Issue #35; production route filtering remains
-  owned by Issues #36 and #37
+- Production settings/startup tests: invalid configuration blocks canonical app
+  import; valid production assembly performs no DB/provider I/O
+- Production route inventory: exactly `GET /health` and
+  `POST /telegram/webhook`; private route modules are not imported
+- Health contract: `{"status": "ok"}` in every environment
 - Latest merged PR:
-  [#59 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/pull/59)
-- Historical migration code changed for Issue #35: `no`
+  [#61 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/pull/61)
+- Historical migration code changed for Issue #36: `no`
 
 ## Completed issues
 
@@ -57,6 +58,9 @@
   `2026-07-31`
 - [#34 — Record trust-boundary, modular-monolith, outbox, and migration ADRs](https://github.com/smytsyk-beep/a_daily/issues/34)
   via [PR #59](https://github.com/smytsyk-beep/a_daily/pull/59), merged
+  `2026-07-31`
+- [#35 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/issues/35)
+  via [PR #61](https://github.com/smytsyk-beep/a_daily/pull/61), merged
   `2026-07-31`
 
 ## Architecture invariants
