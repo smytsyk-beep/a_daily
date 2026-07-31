@@ -15,24 +15,21 @@
 ## Current work
 
 - Approved remediation base branch: `main`
-- Current working branch: `fix/37-trusted-host-safe-errors`
-- Worktree: Issue #37 commits pushed to draft PR #63
+- Current working branch: `main`
+- Worktree: clean after the Issue #37 post-merge handoff update
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
-- Current tracking issue:
-  [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13)
-- Current implementation issue:
-  [#37 — Add trusted-host, safe-error, and production route-exposure tests](https://github.com/smytsyk-beep/a_daily/issues/37)
-- Current PR:
-  [#63 — Enforce trusted hosts and safe public errors](https://github.com/smytsyk-beep/a_daily/pull/63)
-- Trusted-host/safe-error status: `implemented and locally verified; draft PR #63 open`
+- Current tracking issue: `not selected`
+- Current implementation issue: `not selected`
+- Current PR: `none`
+- Trusted-host/safe-error status: `completed via PR #63`
 - Production route-boundary status: `completed via PR #62`
 - Settings validation status: `completed via PR #61`
 - ADR status: four accepted decision records and their canonical index merged
   via PR #59
 - Baseline verification: `passed` locally for Issue #37 on Windows/Python 3.13
-  on `2026-07-31`; latest canonical GitHub Actions Python 3.11 baseline passed
-  on PR #62
+  on `2026-07-31`; canonical GitHub Actions Python 3.11 baseline passed on
+  PR #63
 - Disposable database: PostgreSQL `160011`, empty before migrations
 - Fresh migration result: `passed`, head `a1b2c3d4e5f6`
 - Current regression suite: `226 passed, 128 warnings`; skips/xfails/xpasses
@@ -49,7 +46,7 @@
 - Production middleware order: correlation ID, trusted-host enforcement,
   FastAPI routing; safe errors use one stable JSON envelope
 - Latest merged PR:
-  [#62 — Enforce the pilot production router boundary](https://github.com/smytsyk-beep/a_daily/pull/62)
+  [#63 — Enforce trusted hosts and safe public errors](https://github.com/smytsyk-beep/a_daily/pull/63)
 - Historical migration code changed for Issue #37: `no`
 
 ## Completed issues
@@ -68,6 +65,9 @@
   `2026-07-31`
 - [#36 — Register only health and Telegram webhook on the public production app](https://github.com/smytsyk-beep/a_daily/issues/36)
   via [PR #62](https://github.com/smytsyk-beep/a_daily/pull/62), merged
+  `2026-07-31`
+- [#37 — Add trusted-host, safe-error, and production route-exposure tests](https://github.com/smytsyk-beep/a_daily/issues/37)
+  via [PR #63](https://github.com/smytsyk-beep/a_daily/pull/63), merged
   `2026-07-31`
 
 ## Architecture invariants
@@ -108,7 +108,7 @@ Run the canonical isolated PostgreSQL 16 baseline:
 python scripts/verify_baseline.py
 ```
 
-The runner requires exactly 186 passing tests with no skips/xfails, a fresh
+The runner requires exactly 226 passing tests with no skips/xfails, a fresh
 upgrade to `a1b2c3d4e5f6`, and an exact match to the expected 11-entry Alembic
 drift owned by Issue #15. It verifies disposable resource cleanup.
 
@@ -116,7 +116,7 @@ drift owned by Issue #15. It verifies disposable resource cleanup.
 
 - [Pre-production code audit](preprod_code_audit.md)
 - [Correction plan](Correction_plan_AstroDaily_2026-07-30.md)
-- [Current tracking issue #13](https://github.com/smytsyk-beep/a_daily/issues/13)
+- [Completed tracking issue #13](https://github.com/smytsyk-beep/a_daily/issues/13)
 - [Known schema drift tracking issue #15](https://github.com/smytsyk-beep/a_daily/issues/15)
 - [Baseline verification guide](baseline_verification.md)
 - [Application configuration contract](configuration.md)
@@ -126,7 +126,9 @@ drift owned by Issue #15. It verifies disposable resource cleanup.
 - [Completed implementation issue #34](https://github.com/smytsyk-beep/a_daily/issues/34)
 - [Completed implementation issue #35](https://github.com/smytsyk-beep/a_daily/issues/35)
 - [Completed implementation issue #36](https://github.com/smytsyk-beep/a_daily/issues/36)
+- [Completed implementation issue #37](https://github.com/smytsyk-beep/a_daily/issues/37)
 - [Merged PR #57](https://github.com/smytsyk-beep/a_daily/pull/57)
 - [Merged PR #59](https://github.com/smytsyk-beep/a_daily/pull/59)
 - [Merged PR #61](https://github.com/smytsyk-beep/a_daily/pull/61)
 - [Merged PR #62](https://github.com/smytsyk-beep/a_daily/pull/62)
+- [Merged PR #63](https://github.com/smytsyk-beep/a_daily/pull/63)

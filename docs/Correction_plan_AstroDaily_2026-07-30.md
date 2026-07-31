@@ -6,18 +6,15 @@
 
 ## Implementation status
 
-- Remediation status: Issues #35 and #36 completed via PRs #61 and #62; Issue
-  #37 trusted-host, safe-error, and exposure work is locally verified in draft
-  PR #63 and remains in progress until review and merge.
-- Application code changes: Issue #37 production HTTP boundary hardening is
-  implemented on `fix/37-trusted-host-safe-errors`.
+- Remediation status: Issues #35, #36, and #37 completed via PRs #61, #62, and
+  #63; tracking Issue #13 is closed.
+- Application code changes: none active; the pilot production HTTP boundary is
+  complete in `main`.
 - Active release wave: **Wave A — Mandatory Foundation**.
 - Active GitHub milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1).
-- Current tracking issue:
-  [#13 — Enforce the pilot production API boundary](https://github.com/smytsyk-beep/a_daily/issues/13).
-- Current implementation issue:
-  [#37 — Add trusted-host, safe-error, and production route-exposure tests](https://github.com/smytsyk-beep/a_daily/issues/37).
+- Current tracking issue: not selected.
+- Current implementation issue: not selected.
 - ADR status: accepted and merged; the canonical index is
   [docs/adr/README.md](adr/README.md).
 - Completed GitHub issues:
@@ -29,7 +26,9 @@
   and
   [#35 — Add fail-fast production settings and secret validation](https://github.com/smytsyk-beep/a_daily/issues/35),
   and
-  [#36 — Register only health and Telegram webhook on the public production app](https://github.com/smytsyk-beep/a_daily/issues/36).
+  [#36 — Register only health and Telegram webhook on the public production app](https://github.com/smytsyk-beep/a_daily/issues/36),
+  and
+  [#37 — Add trusted-host, safe-error, and production route-exposure tests](https://github.com/smytsyk-beep/a_daily/issues/37).
 - GitHub backlog created: 3 milestones, 17 project labels, 20 tracking issues,
   and 23 Wave A implementation issues.
 - Wave B and Wave C implementation issues remain decomposed in this document
