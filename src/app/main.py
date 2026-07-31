@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from common.config import Settings, get_settings
 from common.error_handling import setup_exception_handlers
+from common.http_security import CorrelationIdMiddleware, SafeTrustedHostMiddleware
 
 
 def root() -> dict[str, object]:
@@ -65,6 +66,14 @@ def create_app(runtime_settings: Settings | None = None) -> FastAPI:
 
     if resolved_settings.APP_ENV in {"dev", "test"}:
         register_non_production_routes(application)
+
+    if is_production:
+        application.add_middleware(
+            SafeTrustedHostMiddleware,
+            allowed_hosts=resolved_settings.TRUSTED_HOSTS,
+            www_redirect=False,
+        )
+    application.add_middleware(CorrelationIdMiddleware)
 
     return application
 

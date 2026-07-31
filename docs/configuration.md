@@ -92,8 +92,61 @@ Entries are trimmed and normalized to lowercase. Exact hostnames and leading
 wildcard subdomain patterns are accepted. An empty list, the unrestricted `*`,
 a URL scheme, path, port, malformed label, or ambiguous value is rejected in
 production. The normalized runtime value is available as
-`settings.TRUSTED_HOSTS`, a tuple ready for the middleware work owned by Issue
-#37. Issue #35 does not add that middleware.
+`settings.TRUSTED_HOSTS`.
+
+The production application enforces that tuple before routing. Exact hosts,
+hosts with a request port, and configured wildcard subdomains are accepted;
+unknown hosts, wildcard parent domains, suffix lookalikes, malformed or missing
+Host headers are rejected with the canonical `untrusted_host` JSON error.
+`X-Forwarded-Host` is not trusted, and `www` redirects are disabled. Host
+enforcement depends only on `APP_ENV=prod`, never on `DEBUG`, `APP_HOST`, or CI
+state. Development and test route behavior remains unchanged.
+
+Correlation middleware is outermost, followed by trusted-host enforcement and
+then FastAPI routing. Consequently, an untrusted request receives a request ID
+but cannot invoke a route handler, database dependency, or provider call.
+
+## Public errors and request IDs
+
+All environments use one public JSON error envelope; production never returns
+exception names, exception text, validation inputs, request bodies, stack
+traces, DSNs, tokens, secrets, or passwords:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "not_found",
+    "message": "Resource not found"
+  },
+  "request_id": "0d52ca4e-9f2d-4bcd-85dd-e367d579c236"
+}
+```
+
+The canonical public error codes are:
+
+- `bad_request`;
+- `untrusted_host`;
+- `unauthorized`;
+- `forbidden`;
+- `not_found`;
+- `method_not_allowed`;
+- `conflict`;
+- `validation_error`;
+- `rate_limited`;
+- `internal_error`.
+
+Clients may send `X-Request-ID` using only `[A-Za-z0-9._-]{1,128}`. A valid
+value is preserved in `request.state.request_id`, the response header, and an
+error body. A missing, oversized, malformed, CR/LF, or control-character value
+is replaced by a generated UUID. Successful responses include the header but
+do not add the ID to their existing response bodies.
+
+Application error logs include only a stable error code, request ID, HTTP
+method, safe route template (or `<unmatched>`), and status code. They do not
+include the exception, traceback, query string, body, or request headers.
+Uvicorn and deployment-platform access-log configuration remains outside Issue
+#37 and must be reviewed separately before production rollout.
 
 ## Pilot flags
 
