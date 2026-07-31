@@ -1,0 +1,130 @@
+{
+  "contract_version": 1,
+  "issue": "https://github.com/smytsyk-beep/a_daily/issues/15",
+  "expected_drift": [
+    {
+      "column": "estimated_cost_usd",
+      "from": "numeric(10, 6)",
+      "operation": "modify_type",
+      "schema": null,
+      "table": "llm_usage_log",
+      "to": "float"
+    },
+    {
+      "column": "id",
+      "from": "bigint",
+      "operation": "modify_type",
+      "schema": null,
+      "table": "llm_usage_log",
+      "to": "integer"
+    },
+    {
+      "columns": [
+        "created_at"
+      ],
+      "index": "ix_llm_usage_log__created_at",
+      "operation": "remove_index",
+      "schema": null,
+      "table": "llm_usage_log",
+      "unique": false
+    },
+    {
+      "columns": [
+        "is_enabled"
+      ],
+      "index": "ix_feature_flags_enabled",
+      "operation": "remove_index",
+      "schema": null,
+      "table": "feature_flags",
+      "unique": false
+    },
+    {
+      "columns": [
+        "kind",
+        "ts"
+      ],
+      "index": "ix_events_kind_ts",
+      "operation": "remove_index",
+      "schema": null,
+      "table": "events",
+      "unique": false
+    },
+    {
+      "columns": [
+        "persona_tags"
+      ],
+      "index": "ix_content_atoms__persona_tags_gin",
+      "operation": "remove_index",
+      "schema": null,
+      "table": "content_atoms",
+      "unique": false
+    },
+    {
+      "columns": [
+        "user_id",
+        "(details ->> 'local_date'::text)"
+      ],
+      "index": "ix_events__user_id__local_date",
+      "operation": "remove_index",
+      "schema": null,
+      "table": "events",
+      "unique": false
+    },
+    {
+      "columns": [
+        "user_id",
+        "ts"
+      ],
+      "index": "ix_events_user_ts",
+      "operation": "remove_index",
+      "schema": null,
+      "table": "events",
+      "unique": false
+    },
+    {
+      "columns": [
+        "user_id"
+      ],
+      "index": "ix_llm_usage_log__user_id",
+      "operation": "remove_index",
+      "schema": null,
+      "table": "llm_usage_log",
+      "unique": false
+    },
+    {
+      "columns": [
+        "user_id"
+      ],
+      "index": "ix_llm_usage_log_user_id",
+      "operation": "add_index",
+      "schema": null,
+      "table": "llm_usage_log",
+      "unique": false
+    },
+    {
+      "columns": [
+        {
+          "name": "module",
+          "nullable": false,
+          "primary_key": true,
+          "type": "varchar(64)"
+        },
+        {
+          "name": "enabled",
+          "nullable": false,
+          "primary_key": false,
+          "type": "boolean"
+        },
+        {
+          "name": "config",
+          "nullable": false,
+          "primary_key": false,
+          "type": "jsonb"
+        }
+      ],
+      "operation": "remove_table",
+      "schema": null,
+      "table": "module_registry"
+    }
+  ]
+}
