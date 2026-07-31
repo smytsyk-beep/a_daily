@@ -6,17 +6,19 @@
 
 ## Implementation status
 
-- Remediation status: Issue #33 reproducible audited baseline in progress.
+- Remediation status: Issue #33 reproducible audited baseline completed via
+  PR #57; the next implementation issue is not selected.
 - Application code changes: none.
 - Active release wave: **Wave A — Mandatory Foundation**.
 - Active GitHub milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1).
 - Current tracking issue:
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12).
-- Current implementation issue:
-  [#33 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/issues/33).
+- Current implementation issue: not selected.
 - Completed GitHub issues:
-  [#32 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/issues/32).
+  [#32 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/issues/32)
+  and
+  [#33 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/issues/33).
 - GitHub backlog created: 3 milestones, 17 project labels, 20 tracking issues,
   and 23 Wave A implementation issues.
 - Wave B and Wave C implementation issues remain decomposed in this document

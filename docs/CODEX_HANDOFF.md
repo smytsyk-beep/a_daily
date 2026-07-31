@@ -15,21 +15,16 @@
 ## Current work
 
 - Approved remediation base branch: `main`
-- Current working branch: `test/33-reproducible-baseline`
-- Worktree: dirty with Issue #33 verification, CI, and documentation changes
-  only
+- Current working branch: none; no implementation issue is selected
+- Worktree: clean after Issue #33 merged into `main`
 - Active milestone:
   [Wave A — Mandatory Foundation (Pilot Gate)](https://github.com/smytsyk-beep/a_daily/milestone/1)
 - Current tracking issue:
   [#12 — Baseline, governance and architecture decisions](https://github.com/smytsyk-beep/a_daily/issues/12)
-- Current implementation issue:
-  [#33 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/issues/33)
-- Current PR:
-  [#57 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/pull/57)
-  (`draft`)
+- Current implementation issue: `not selected`
+- Current PR: `none`
 - Baseline verification: `passed` locally on Windows/Python 3.13 on
-  `2026-07-31`; canonical GitHub Actions Python 3.11 run pending on draft
-  PR #57
+  `2026-07-31`; canonical GitHub Actions Python 3.11 run passed on PR #57
 - Disposable database: PostgreSQL `160011`, empty before migrations
 - Fresh migration result: `passed`, head `a1b2c3d4e5f6`
 - Pytest result: `100 passed, 128 warnings in 18.05s`; skips/xfails/xpasses
@@ -39,13 +34,16 @@
 - Cleanup: generated container, network, `tmpfs`, timezone data, and temporary
   configuration removed and verified
 - Latest merged PR:
-  [#55 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/pull/55)
+  [#57 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/pull/57)
 - Application or historical migration code changed for Issue #33: `no`
 
 ## Completed issues
 
 - [#32 — Establish repository governance and Codex handoff](https://github.com/smytsyk-beep/a_daily/issues/32)
   via [PR #55](https://github.com/smytsyk-beep/a_daily/pull/55), merged
+  `2026-07-31`
+- [#33 — Make the audited test and migration baseline reproducible](https://github.com/smytsyk-beep/a_daily/issues/33)
+  via [PR #57](https://github.com/smytsyk-beep/a_daily/pull/57), merged
   `2026-07-31`
 
 ## Architecture invariants
@@ -95,9 +93,8 @@ drift owned by Issue #15. It verifies disposable resource cleanup.
 - [Pre-production code audit](preprod_code_audit.md)
 - [Correction plan](Correction_plan_AstroDaily_2026-07-30.md)
 - [Current tracking issue #12](https://github.com/smytsyk-beep/a_daily/issues/12)
-- [Current implementation issue #33](https://github.com/smytsyk-beep/a_daily/issues/33)
-- [Current draft PR #57](https://github.com/smytsyk-beep/a_daily/pull/57)
 - [Known schema drift tracking issue #15](https://github.com/smytsyk-beep/a_daily/issues/15)
 - [Baseline verification guide](baseline_verification.md)
 - [Completed implementation issue #32](https://github.com/smytsyk-beep/a_daily/issues/32)
-- [Merged PR #55](https://github.com/smytsyk-beep/a_daily/pull/55)
+- [Completed implementation issue #33](https://github.com/smytsyk-beep/a_daily/issues/33)
+- [Merged PR #57](https://github.com/smytsyk-beep/a_daily/pull/57)
